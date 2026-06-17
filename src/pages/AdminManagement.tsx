@@ -4,6 +4,7 @@ import { collection, addDoc, onSnapshot, query, where, doc, deleteDoc, updateDoc
 import { db, auth, handleFirestoreError, OperationType, useAdminAccess } from '../firebase';
 import { Match, Player, Team } from '../types';
 import { Pencil, Trash2, X, Check, Shield } from 'lucide-react';
+import { LiveMatchTimer } from '../components/LiveMatchTimer';
 
 export function AdminManagement() {
   const [activeTab, setActiveTab] = useState<'tournaments' | 'teams' | 'players' | 'matches' | 'settings'>('matches');
@@ -366,7 +367,7 @@ export function AdminManagement() {
           <div className="space-y-2">
             <h3 className="font-bold text-slate-800">Aktive Kampe</h3>
             
-            {matches.filter(m => m.status !== 'finished').map(m => (
+            {matches.filter(m => m.status !== 'finished').sort((a,b) => (a.startTime || Number.MAX_SAFE_INTEGER) - (b.startTime || Number.MAX_SAFE_INTEGER)).map(m => (
               editingMatchId === m.id ? (
                 <form key={m.id} onSubmit={(e) => {
                   e.preventDefault();
@@ -407,11 +408,24 @@ export function AdminManagement() {
                   </div>
                   <Link to={`/admin/match/${m.id}`} className="block hover:border-emerald-500 transition-colors">
                     <div className="flex justify-between items-center text-[10px] uppercase font-bold text-slate-400 mb-1 pr-16">
-                      <span>{m.tournamentName} - {m.halfDuration} min. halvleg</span>
+                      <div className="flex items-center gap-2">
+                        {(m.status === 'first_half' || m.status === 'second_half') && (
+                          <div className="text-emerald-600 flex items-center gap-2">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <LiveMatchTimer match={m} />
+                          </div>
+                        )}
+                        <span>{m.tournamentName} - {m.halfDuration} min. halvleg</span>
+                      </div>
                       {m.startTime ? <span>{new Date(m.startTime).toLocaleString('da-DK', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span> : null}
                     </div>
                     <div className="font-bold">{m.homeTeam.name} vs {m.awayTeam.name}</div>
-                    <div className="text-[10px] uppercase font-bold text-emerald-500 mt-2 flex items-center justify-end">Åbn Kampstyring →</div>
+                    <div className="text-[10px] uppercase font-bold text-emerald-500 mt-2 flex items-center justify-end">
+                      {(m.status === 'first_half' || m.status === 'second_half') ? 'Gå til live kamp →' : 'Åbn Kampstyring →'}
+                    </div>
                   </Link>
                 </div>
               )

@@ -15,10 +15,13 @@ export const logOut = () => signOut(auth);
 // Simple connection check
 async function testConnection() {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await getDocFromServer(doc(db, 'settings', 'auth'));
+    console.log("Firebase Connection and Rules are working correctly!");
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+      console.error("Please check your Firebase configuration: offline");
+    } else {
+      console.error("Connection check failed:", error);
     }
   }
 }
@@ -81,6 +84,9 @@ export function useAdminAccess() {
         setAllowedEmails(docSnap.data().allowedEmails);
       }
       setLoadingAdmins(false);
+    }, (error) => {
+      console.error("Error loading admins:", error);
+      setLoadingAdmins(false); // Stop loading even if there's an error
     });
     return unsub;
   }, []);

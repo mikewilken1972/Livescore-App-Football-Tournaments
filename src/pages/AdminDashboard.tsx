@@ -53,7 +53,7 @@ export function AdminDashboard() {
           <h1 className="text-2xl font-black text-white mb-2">Admin Dashboard</h1>
           <p className="text-slate-400 text-sm mb-8">Log ind for at styre live kampe og oprette hold.</p>
           <button 
-            onClick={signInWithGoogle}
+            onClick={() => signInWithGoogle().catch(e => alert("Login fejl: " + e.message + "\n\nTip: Prøv at åbne appen i en ny fane, hvis pop-up vinduet bliver blokeret."))}
             className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 active:scale-95 transition-all text-white font-black rounded-xl uppercase tracking-widest text-sm"
           >
             Log ind med Google

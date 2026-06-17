@@ -10,7 +10,6 @@ import { LiveMatchTimer } from '../components/LiveMatchTimer';
 function MatchCard({ match }: { match: Match }) {
   return (
     <Link 
-      key={match.id} 
       to={`/match/${match.id}`}
       className="block bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
     >
@@ -59,7 +58,7 @@ export function Home() {
     const q = query(collection(db, 'matches'));
     const unsub = onSnapshot(q, snapshot => {
       let allMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
-      allMatches.sort((a, b) => (a.startTime || 0) - (b.startTime || 0)); // Sort newest first, wait no we probably want ascending for upcoming
+      allMatches.sort((a, b) => (a.startTime || Number.MAX_SAFE_INTEGER) - (b.startTime || Number.MAX_SAFE_INTEGER));
       setMatches(allMatches);
       setLoading(false);
     }, err => handleFirestoreError(err, OperationType.LIST, 'matches'));

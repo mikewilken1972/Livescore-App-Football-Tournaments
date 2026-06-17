@@ -21,6 +21,7 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
   // States for Card/Sub modal
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [selectedPlayer, setSelectedPlayer] = useState<string>('');
+  const [selectedSubIn, setSelectedSubIn] = useState<string>('');
   const [cardType, setCardType] = useState<'yellow_card' | 'red_card'>('yellow_card');
 
   const homePlayers = players.filter(p => p.teamId === match.homeTeam.id);
@@ -32,6 +33,7 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
     setSelectedAssist('');
     setSelectedTeam('');
     setSelectedPlayer('');
+    setSelectedSubIn('');
     setCardType('yellow_card');
   };
 
@@ -43,14 +45,15 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
   };
 
   const handleCardSubmit = () => {
-    if (!selectedTeam || !selectedPlayer) return;
-    onAddEvent(cardType, selectedTeam, selectedPlayer);
+    if (!selectedTeam) return;
+    onAddEvent(cardType, selectedTeam, selectedPlayer || undefined);
     resetModals();
   };
 
   const handleSubSubmit = () => {
-    if (!selectedTeam || !selectedPlayer) return;
-    onAddEvent('substitution', selectedTeam, selectedPlayer);
+    if (!selectedTeam) return;
+    // assistId is player coming IN, playerId is player going OUT
+    onAddEvent('substitution', selectedTeam, selectedPlayer || undefined, selectedSubIn || undefined);
     resetModals();
   };
 
@@ -114,7 +117,7 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
           >
             <div className="text-left">
               <div className="text-xs font-bold uppercase opacity-80">Hændelse</div>
-              <div className="text-2xl font-black">{match.homeTeam.shortName} MÅL</div>
+              <div className="text-2xl font-black">{match.homeTeam.name} MÅL</div>
             </div>
             <div className="bg-white/20 p-2 rounded-full">
               <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path></svg>
@@ -127,7 +130,7 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
           >
             <div className="text-left">
               <div className="text-xs font-bold uppercase opacity-80">Hændelse</div>
-              <div className="text-2xl font-black">{match.awayTeam.shortName} MÅL</div>
+              <div className="text-2xl font-black">{match.awayTeam.name} MÅL</div>
             </div>
             <div className="bg-white/20 p-2 rounded-full">
               <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path></svg>
@@ -238,7 +241,7 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
                     <select 
                       className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold focus:border-emerald-500 outline-none"
                       value={selectedTeam}
-                      onChange={(e) => { setSelectedTeam(e.target.value); setSelectedPlayer(''); }}
+                      onChange={(e) => { setSelectedTeam(e.target.value); setSelectedPlayer(''); setSelectedSubIn(''); }}
                     >
                       <option value="">Vælg hold...</option>
                       <option value={match.homeTeam.id}>{match.homeTeam.name}</option>
@@ -246,15 +249,46 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
                     </select>
                   </div>
 
-                  {selectedTeam && (
+                  {selectedTeam && activeModal === 'sub' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Spiller IN (Valgfri)</label>
+                        <select 
+                          className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold focus:border-emerald-500 outline-none"
+                          value={selectedSubIn}
+                          onChange={(e) => setSelectedSubIn(e.target.value)}
+                        >
+                          <option value="">Ingen spiller valgt</option>
+                          {(selectedTeam === match.homeTeam.id ? homePlayers : awayPlayers).map(p => (
+                            <option key={p.id} value={p.id}>#{p.number} {p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Spiller UD (Valgfri)</label>
+                        <select 
+                          className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold focus:border-emerald-500 outline-none"
+                          value={selectedPlayer}
+                          onChange={(e) => setSelectedPlayer(e.target.value)}
+                        >
+                          <option value="">Ingen spiller valgt</option>
+                          {(selectedTeam === match.homeTeam.id ? homePlayers : awayPlayers).map(p => (
+                            <option key={p.id} value={p.id}>#{p.number} {p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedTeam && activeModal === 'card' && (
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Spiller *</label>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Spiller (Valgfri)</label>
                       <select 
                         className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold focus:border-emerald-500 outline-none"
                         value={selectedPlayer}
                         onChange={(e) => setSelectedPlayer(e.target.value)}
                       >
-                        <option value="">Vælg spiller...</option>
+                        <option value="">Ingen spiller valgt</option>
                         {(selectedTeam === match.homeTeam.id ? homePlayers : awayPlayers).map(p => (
                           <option key={p.id} value={p.id}>#{p.number} {p.name}</option>
                         ))}
@@ -278,7 +312,7 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
 
                   <div className="pt-2">
                      <button 
-                       disabled={!selectedTeam || !selectedPlayer}
+                       disabled={!selectedTeam}
                        onClick={activeModal === 'card' ? handleCardSubmit : handleSubSubmit}
                        className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:bg-slate-300 text-white font-black text-lg border-b-4 border-emerald-700 disabled:border-slate-400 rounded-2xl active:border-b-2 active:translate-y-0.5 transition-all"
                      >
@@ -295,3 +329,4 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onReset,
     </div>
   );
 }
+

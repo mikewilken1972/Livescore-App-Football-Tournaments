@@ -29,7 +29,7 @@ export function AdminMatch() {
       }
     });
     return unsubAuth;
-  }, [navigate]);
+  }, [navigate, loadingAdmins, allowedEmails]);
 
   // Time simulation
   // ... rest of the component state effects unchanged ...

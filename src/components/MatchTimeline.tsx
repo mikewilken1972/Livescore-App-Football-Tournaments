@@ -92,8 +92,17 @@ export function MatchTimeline({ match, events, players }: MatchTimelineProps) {
                         {event.type === 'own_goal' && <div className="text-xs text-white bg-red-500 rounded px-1 w-max font-bold mt-1">Selvmål</div>}
                         {event.type === 'penalty_goal' && <div className="text-xs text-slate-500 font-bold mt-0.5 uppercase">Straffespark</div>}
                       </>
+                    ) : event.type === 'substitution' ? (
+                      <>
+                        <div className="text-sm font-bold text-slate-800">
+                          {event.assistPlayerId ? `IN: ${getPlayerName(event.assistPlayerId)}` : 'Indskiftning'}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {event.playerId ? `UD: ${getPlayerName(event.playerId)}` : 'Udskiftning'}
+                        </div>
+                      </>
                     ) : (
-                      <div className="text-sm font-bold text-slate-800">{getPlayerName(event.playerId)}</div>
+                      <div className="text-sm font-bold text-slate-800">{event.playerId ? getPlayerName(event.playerId) : (event.teamId === match.homeTeam.id ? match.homeTeam.name : match.awayTeam.name)}</div>
                     )}
                   </>
                 )}
