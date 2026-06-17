@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "Tournament": {
+      "title": "Tournament",
+      "description": "A tournament.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["name", "createdAt", "ownerId"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "A team.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "shortName": { "type": "string" },
+        "color": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "A player belonging to a team.",
+      "type": "object",
+      "properties": {
+        "teamId": { "type": "string" },
+        "name": { "type": "string" },
+        "number": { "type": "number" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["teamId", "name", "ownerId"]
+    },
+    "MatchEvent": {
+      "title": "MatchEvent",
+      "description": "An event happening in a match.",
+      "type": "object",
+      "properties": {
+        "matchId": { "type": "string" },
+        "type": { "type": "string" },
+        "minute": { "type": "number" },
+        "timestamp": { "type": "number" },
+        "teamId": { "type": "string" },
+        "playerId": { "type": "string" },
+        "assistPlayerId": { "type": "string" }
+      },
+      "required": ["matchId", "type", "minute", "timestamp"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A match session.",
+      "type": "object",
+      "properties": {
+        "tournamentName": { "type": "string" },
+        "groupName": { "type": "string" },
+        "homeTeam": { "type": "object" },
+        "awayTeam": { "type": "object" },
+        "homeScore": { "type": "number" },
+        "awayScore": { "type": "number" },
+        "status": { "type": "string" },
+        "startTime": { "type": "number" },
+        "halfDuration": { "type": "number" },
+        "elapsedSeconds": { "type": "number" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["tournamentName", "homeTeam", "awayTeam", "homeScore", "awayScore", "status", "halfDuration", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/tournaments/{tournamentId}": {
+      "schema": "Tournament",
+      "description": "Tournaments."
+    },
+    "/teams/{teamId}": {
+      "schema": "Team",
+      "description": "Teams."
+    },
+    "/players/{playerId}": {
+      "schema": "Player",
+      "description": "Players."
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Matches."
+    },
+    "/matches/{matchId}/events/{eventId}": {
+      "schema": "MatchEvent",
+      "description": "Events of a match."
+    }
+  }
+}

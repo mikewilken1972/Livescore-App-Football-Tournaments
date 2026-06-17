@@ -1,0 +1,6 @@
+{
+  "name": "Kampklar Livescore Prototype",
+  "description": "Livescore-platform til lokale fodboldstævner med realtidsopdatering og indberetning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

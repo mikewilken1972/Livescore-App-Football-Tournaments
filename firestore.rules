@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Helpers ---
+    
+    function isValidTournament(data) {
+      return data.keys().hasAll(['name', 'createdAt', 'ownerId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.createdAt is number &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidTeam(data) {
+      return data.keys().hasAll(['name', 'ownerId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.ownerId == request.auth.uid &&
+             (data.get('shortName', '') is string) &&
+             (data.get('color', '') is string);
+    }
+
+    function isValidPlayer(data) {
+      return data.keys().hasAll(['teamId', 'name', 'ownerId']) &&
+             data.teamId is string && data.teamId.size() > 0 && data.teamId.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.ownerId == request.auth.uid &&
+             (data.get('number', 0) is number);
+    }
+
+    function isValidMatch(data) {
+      return data.keys().hasAll(['tournamentName', 'homeTeam', 'awayTeam', 'homeScore', 'awayScore', 'status', 'halfDuration', 'ownerId']) &&
+             data.tournamentName is string && data.tournamentName.size() <= 100 &&
+             (data.get('groupName', '') is string) &&
+             data.homeTeam is map &&
+             data.awayTeam is map &&
+             data.homeScore is number && data.homeScore >= 0 &&
+             data.awayScore is number && data.awayScore >= 0 &&
+             data.status is string && data.status.size() <= 50 &&
+             data.halfDuration is number && data.halfDuration >= 1 &&
+             (data.get('elapsedSeconds', 0) is number) &&
+             (data.get('startTime', 0) is number) &&
+             (data.get('statusUpdatedAt', 0) is number) &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidMatchEvent(data) {
+      return data.keys().hasAll(['matchId', 'type', 'minute', 'timestamp']) &&
+             data.matchId is string && data.matchId.size() <= 128 &&
+             data.type is string && data.type.size() <= 50 &&
+             data.minute is number && data.minute >= 0 &&
+             data.timestamp is number &&
+             (data.get('teamId', '') is string) &&
+             (data.get('playerId', '') is string) &&
+             (data.get('assistPlayerId', '') is string);
+    }
+
+
+    // --- Paths ---
+    
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(tournamentId) && isValidTournament(incoming()) && incoming().keys().hasAll(['name', 'createdAt', 'ownerId']) && incoming().keys().size() == 3;
+      allow update: if isSignedIn() && isValidId(tournamentId) && isValidTournament(incoming()) &&
+                    incoming().ownerId == existing().ownerId &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name']);
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+
+    match /teams/{teamId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(teamId) && isValidTeam(incoming()) && incoming().keys().hasAll(['name', 'ownerId', 'shortName', 'color']) && incoming().keys().size() <= 4;
+      allow update: if isSignedIn() && isValidId(teamId) && isValidTeam(incoming()) &&
+                    incoming().ownerId == existing().ownerId &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'shortName', 'color']);
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+
+    match /players/{playerId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(playerId) && isValidPlayer(incoming()) && incoming().keys().hasAll(['teamId', 'name', 'ownerId', 'number']) && incoming().keys().size() <= 4;
+      allow update: if isSignedIn() && isValidId(playerId) && isValidPlayer(incoming()) &&
+                    incoming().ownerId == existing().ownerId &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['teamId', 'name', 'number']);
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(matchId) && isValidMatch(incoming()) && incoming().keys().hasAll(['tournamentName', 'groupName', 'homeTeam', 'awayTeam', 'homeScore', 'awayScore', 'status', 'startTime', 'halfDuration', 'elapsedSeconds', 'ownerId']) && incoming().keys().size() <= 12;
+      allow update: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      match /events/{eventId} {
+        allow read: if true;
+        allow write: if isSignedIn();
+      }
+    }
+  }
+}

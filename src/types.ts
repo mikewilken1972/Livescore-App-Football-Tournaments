@@ -1,0 +1,53 @@
+export type Team = {
+  id: string;
+  name: string;
+  shortName?: string;
+  color?: string;
+};
+
+export type Player = {
+  id: string;
+  teamId: string;
+  name: string;
+  number?: number;
+};
+
+export type MatchStatus = 'scheduled' | 'first_half' | 'half_time' | 'second_half' | 'finished';
+
+export type EventType = 
+  | 'match_start' 
+  | 'half_time' 
+  | 'second_half_start' 
+  | 'match_end' 
+  | 'goal' 
+  | 'penalty_goal'
+  | 'own_goal'
+  | 'yellow_card' 
+  | 'red_card'
+  | 'substitution';
+
+export type MatchEvent = {
+  id: string;
+  matchId: string;
+  type: EventType;
+  minute: number;
+  timestamp: number;
+  teamId?: string;
+  playerId?: string;
+  assistPlayerId?: string;
+};
+
+export type Match = {
+  id: string;
+  tournamentName: string;
+  groupName: string;
+  homeTeam: Team;
+  awayTeam: Team;
+  homeScore: number;
+  awayScore: number;
+  status: MatchStatus;
+  startTime?: number;
+  halfDuration: number;
+  elapsedSeconds?: number;
+  statusUpdatedAt?: number;
+};
