@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer, onSnapshot } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -68,4 +69,21 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   }
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
+}
+
+export function useAdminAccess() {
+  const [allowedEmails, setAllowedEmails] = useState<string[]>(['mikewilken@gmail.com']);
+  const [loadingAdmins, setLoadingAdmins] = useState(true);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'auth'), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().allowedEmails) {
+        setAllowedEmails(docSnap.data().allowedEmails);
+      }
+      setLoadingAdmins(false);
+    });
+    return unsub;
+  }, []);
+
+  return { allowedEmails, loadingAdmins };
 }

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, addDoc, onSnapshot, query, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { collection, addDoc, onSnapshot, query, where, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType, useAdminAccess } from '../firebase';
 import { Match, Player, Team } from '../types';
-import { Pencil, Trash2, X, Check } from 'lucide-react';
+import { Pencil, Trash2, X, Check, Shield } from 'lucide-react';
 
 export function AdminManagement() {
-  const [activeTab, setActiveTab] = useState<'tournaments' | 'teams' | 'players' | 'matches'>('matches');
+  const [activeTab, setActiveTab] = useState<'tournaments' | 'teams' | 'players' | 'matches' | 'settings'>('matches');
+  const { allowedEmails } = useAdminAccess();
+  const [newAdminEmail, setNewAdminEmail] = useState('');
   
   // States for lists
   const [teams, setTeams] = useState<Team[]>([]);
@@ -178,16 +180,48 @@ export function AdminManagement() {
     }
   };
 
+  const handleAddAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminEmail) return;
+    if (allowedEmails.includes(newAdminEmail)) {
+      setNewAdminEmail('');
+      return;
+    }
+    try {
+      await setDoc(doc(db, 'settings', 'auth'), {
+        allowedEmails: [...allowedEmails, newAdminEmail]
+      });
+      setNewAdminEmail('');
+    } catch (err) {
+      alert("Du har ikke rettigheder til at tilføje administratorer.");
+    }
+  };
+
+  const handleRemoveAdmin = async (emailToRemove: string) => {
+    if (emailToRemove === 'mikewilken@gmail.com') {
+      alert('Kan ikke fjerne hovedadministratoren');
+      return;
+    }
+    if (!window.confirm(`Er du sikker på du vil fjerne ${emailToRemove}?`)) return;
+    try {
+      await setDoc(doc(db, 'settings', 'auth'), {
+        allowedEmails: allowedEmails.filter(e => e !== emailToRemove)
+      });
+    } catch (err) {
+      alert("Du har ikke rettigheder til at fjerne administratorer.");
+    }
+  };
+
   return (
     <div className="p-4 overflow-y-auto w-full">
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {(['matches', 'tournaments', 'teams', 'players'] as const).map(tab => (
+        {(['matches', 'tournaments', 'teams', 'players', 'settings'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-600'}`}
           >
-            {tab === 'matches' ? 'Kampe' : tab === 'tournaments' ? 'Turneringer' : tab === 'teams' ? 'Hold' : 'Spillere'}
+            {tab === 'matches' ? 'Kampe' : tab === 'tournaments' ? 'Turneringer' : tab === 'teams' ? 'Hold' : tab === 'players' ? 'Spillere' : 'Admins'}
           </button>
         ))}
       </div>
@@ -458,6 +492,49 @@ export function AdminManagement() {
                </div>
                <button type="submit" disabled={!newMatchHome || !newMatchAway || !newMatchTourName} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50">Opret Kamp</button>
              </form>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          <div className="bg-slate-100 p-6 rounded-2xl border-2 border-slate-200">
+            <div className="flex items-center gap-3 mb-4">
+              <Shield className="w-8 h-8 text-emerald-500" />
+              <h3 className="text-xl font-black text-slate-800">Administrativ Adgang</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-6">
+              Tilføj de Google-konti (Email adresser), som har tilladelse til at tilgå dette kontrolpanel, oprette kampe, og ændre oplysninger. Kun mikewilken@gmail.com kan tilføje eller slette admins!
+            </p>
+            
+            <form onSubmit={handleAddAdmin} className="flex gap-2 mb-6">
+              <input 
+                type="email" 
+                placeholder="Indtast email-adresse" 
+                className="flex-[3] min-w-0 bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                value={newAdminEmail}
+                onChange={e => setNewAdminEmail(e.target.value)}
+              />
+              <button type="submit" disabled={!newAdminEmail} className="flex-1 min-w-[80px] bg-emerald-500 hover:bg-emerald-600 transition-colors text-white font-bold rounded-xl disabled:opacity-50">
+                Tilføj
+              </button>
+            </form>
+
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Godkendte Controllere</h4>
+              {allowedEmails.map(email => (
+                <div key={email} className="bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group border border-slate-200">
+                  <span className={email === 'mikewilken@gmail.com' ? 'text-emerald-700' : 'text-slate-700'}>
+                    {email} {email === 'mikewilken@gmail.com' && <span className="opacity-50 text-xs ml-2">(Owner)</span>}
+                  </span>
+                  {email !== 'mikewilken@gmail.com' && (
+                    <button onClick={() => handleRemoveAdmin(email)} className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

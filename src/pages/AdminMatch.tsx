@@ -3,16 +3,15 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, collection, onSnapshot, updateDoc, addDoc, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { ChevronLeft, Shield } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType, logOut } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType, logOut, useAdminAccess } from '../firebase';
 import { Match, MatchEvent, Player, EventType } from '../types';
 import { EventMenu } from '../components/EventMenu';
 import { MatchTimeline } from '../components/MatchTimeline';
 
-const ALLOWED_EMAILS = ['mikewilken@gmail.com'];
-
 export function AdminMatch() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { allowedEmails, loadingAdmins } = useAdminAccess();
   
   const [user, setUser] = useState<User | null>(null);
   const [match, setMatch] = useState<Match | null>(null);
@@ -22,9 +21,10 @@ export function AdminMatch() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (loadingAdmins) return;
     const unsubAuth = onAuthStateChanged(auth, u => {
       setUser(u);
-      if (!u || (u.email && !ALLOWED_EMAILS.includes(u.email))) {
+      if (!u || (u.email && !allowedEmails.includes(u.email))) {
         navigate('/admin'); // Redirect back to dashboard to handle login/forbidden state
       }
     });

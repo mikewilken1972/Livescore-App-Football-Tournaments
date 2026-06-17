@@ -76,6 +76,11 @@ service cloud.firestore {
 
     // --- Paths ---
     
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.token.email == 'mikewilken@gmail.com';
+    }
+
     match /tournaments/{tournamentId} {
       allow read: if true;
       allow create: if isSignedIn() && isValidId(tournamentId) && isValidTournament(incoming()) && incoming().keys().hasAll(['name', 'createdAt', 'ownerId']) && incoming().keys().size() == 3;

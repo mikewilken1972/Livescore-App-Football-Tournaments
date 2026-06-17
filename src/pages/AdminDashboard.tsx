@@ -4,20 +4,14 @@ import { EventMenu } from '../components/EventMenu';
 import { INITIAL_MATCHES, MOCK_PLAYERS, MOCK_INITIAL_EVENTS } from '../data';
 import { Match, MatchEvent, EventType } from '../types';
 import { ChevronLeft, Shield } from 'lucide-react';
-
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronLeft, Shield } from 'lucide-react';
-import { auth, signInWithGoogle, logOut } from '../firebase';
+import { auth, signInWithGoogle, logOut, useAdminAccess } from '../firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { AdminManagement } from './AdminManagement';
 
 export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Tilføj den/de emails, der skal have adgang her:
-  const ALLOWED_EMAILS = ['mikewilken@gmail.com']; 
+  const { allowedEmails, loadingAdmins } = useAdminAccess();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => {
@@ -27,11 +21,11 @@ export function AdminDashboard() {
     return unsub;
   }, []);
 
-  if (loading) {
+  if (loading || loadingAdmins) {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Henter...</div>;
   }
 
-  if (user && user.email && !ALLOWED_EMAILS.includes(user.email)) {
+  if (user && user.email && !allowedEmails.includes(user.email)) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col font-sans pb-safe items-center justify-center p-4">
         <Link to="/" className="absolute top-4 left-4 text-slate-400 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors"><ChevronLeft className="w-4 h-4" /> Tilbage</Link>

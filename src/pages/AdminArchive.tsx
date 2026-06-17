@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Archive as ArchiveIcon, ArrowLeft } from 'lucide-react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { Archive as ArchiveIcon, ArrowLeft, Trash2 } from 'lucide-react';
+import { collection, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType, useAdminAccess } from '../firebase';
 import { Match } from '../types';
-
-const ALLOWED_EMAILS = ['mikewilken@gmail.com'];
 
 export function AdminArchive() {
   const navigate = useNavigate();
+  const { allowedEmails, loadingAdmins } = useAdminAccess();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    if (loadingAdmins) return;
     const unsubAuth = onAuthStateChanged(auth, u => {
       setUser(u);
-      if (!u || (u.email && !ALLOWED_EMAILS.includes(u.email))) {
+      if (!u || (u.email && !allowedEmails.includes(u.email))) {
         navigate('/admin');
       }
     });
     return unsubAuth;
-  }, [navigate]);
+  }, [navigate, allowedEmails, loadingAdmins]);
 
   useEffect(() => {
     if (!user) return;
@@ -37,7 +37,18 @@ export function AdminArchive() {
       setLoading(false);
     }, err => handleFirestoreError(err, OperationType.LIST, 'matches'));
     return unsub;
-  }, []);
+  }, [user]);
+
+  const handleDelete = async (e: React.MouseEvent, matchId: string) => {
+    e.preventDefault(); // Stop Link navigation
+    if (window.confirm('Er du sikker på at du vil slette denne kamp og alle dens hændelser?')) {
+      try {
+        await deleteDoc(doc(db, 'matches', matchId));
+      } catch (err) {
+         handleFirestoreError(err, OperationType.DELETE, 'matches');
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
@@ -66,9 +77,17 @@ export function AdminArchive() {
                 <Link 
                   key={match.id} 
                   to={`/admin/match/${match.id}`}
-                  className="block bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+                  className="block bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group relative"
                 >
-                  <div className="flex justify-between items-center text-[10px] uppercase tracking-widest opacity-60 mb-3 font-bold text-slate-500">
+                  <button
+                    onClick={(e) => handleDelete(e, match.id)}
+                    className="absolute top-2 right-2 p-2 text-slate-300 hover:text-red-500 transition-colors z-10"
+                    title="Slet kamp"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
+                  <div className="flex justify-between items-center text-[10px] uppercase tracking-widest opacity-60 mb-3 font-bold text-slate-500 pr-8">
                     <span>{match.tournamentName} {match.groupName ? `• ${match.groupName}` : ''}</span>
                     {match.startTime ? <span>{new Date(match.startTime).toLocaleString('da-DK', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span> : null}
                   </div>
