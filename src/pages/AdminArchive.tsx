@@ -1,17 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Archive as ArchiveIcon, ArrowLeft } from 'lucide-react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { Match } from '../types';
 
+const ALLOWED_EMAILS = ['mikewilken@gmail.com'];
+
 export function AdminArchive() {
+  const navigate = useNavigate();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
-    const uid = auth.currentUser.uid;
+    const unsubAuth = onAuthStateChanged(auth, u => {
+      setUser(u);
+      if (!u || (u.email && !ALLOWED_EMAILS.includes(u.email))) {
+        navigate('/admin');
+      }
+    });
+    return unsubAuth;
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    const uid = user.uid;
     const q = query(collection(db, 'matches'), where('ownerId', '==', uid));
     const unsub = onSnapshot(q, snapshot => {
       let allMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));

@@ -16,6 +16,9 @@ export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Tilføj den/de emails, der skal have adgang her:
+  const ALLOWED_EMAILS = ['mikewilken@gmail.com']; 
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => {
       setUser(u);
@@ -26,6 +29,25 @@ export function AdminDashboard() {
 
   if (loading) {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Henter...</div>;
+  }
+
+  if (user && user.email && !ALLOWED_EMAILS.includes(user.email)) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col font-sans pb-safe items-center justify-center p-4">
+        <Link to="/" className="absolute top-4 left-4 text-slate-400 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors"><ChevronLeft className="w-4 h-4" /> Tilbage</Link>
+        <div className="w-full max-w-sm bg-slate-800 p-8 rounded-3xl text-center shadow-2xl">
+          <Shield className="w-16 h-16 text-red-500 mx-auto mb-6" />
+          <h1 className="text-2xl font-black text-white mb-2">Ingen adgang</h1>
+          <p className="text-slate-400 text-sm mb-8">Kontoen {user.email} har ikke admin-rettigheder.</p>
+          <button 
+            onClick={logOut}
+            className="w-full py-4 bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all text-white font-black rounded-xl uppercase tracking-widest text-sm"
+          >
+            Log ud
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {

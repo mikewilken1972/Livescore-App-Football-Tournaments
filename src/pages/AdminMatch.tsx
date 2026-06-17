@@ -1,23 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, collection, onSnapshot, updateDoc, addDoc, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { ChevronLeft, Shield } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType, logOut } from '../firebase';
 import { Match, MatchEvent, Player, EventType } from '../types';
 import { EventMenu } from '../components/EventMenu';
 import { MatchTimeline } from '../components/MatchTimeline';
+
+const ALLOWED_EMAILS = ['mikewilken@gmail.com'];
 
 export function AdminMatch() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
+  const [user, setUser] = useState<User | null>(null);
   const [match, setMatch] = useState<Match | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, u => {
+      setUser(u);
+      if (!u || (u.email && !ALLOWED_EMAILS.includes(u.email))) {
+        navigate('/admin'); // Redirect back to dashboard to handle login/forbidden state
+      }
+    });
+    return unsubAuth;
+  }, [navigate]);
+
   // Time simulation
+  // ... rest of the component state effects unchanged ...
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (match) {
