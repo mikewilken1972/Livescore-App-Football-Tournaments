@@ -71,7 +71,7 @@ export function MatchTimeline({ match, events, players }: MatchTimelineProps) {
                       "absolute left-[9.5px] top-1 w-3 h-3 rounded-full ring-4 ring-slate-50",
                       event.type.includes('goal') ? "bg-emerald-500" : 
                       (event.type === 'red_card' ? "bg-red-500" : 
-                       event.type === 'yellow_card' ? "bg-yellow-500" : "bg-blue-500")
+                       (event.type === 'yellow_card' || event.type === 'coach_yellow_card') ? "bg-yellow-500" : "bg-blue-500")
                     )}></div>
                     
                     <div className="text-xs text-slate-400 font-mono font-bold uppercase">
@@ -79,7 +79,11 @@ export function MatchTimeline({ match, events, players }: MatchTimelineProps) {
                         event.type.includes('goal') ? 'Mål' : 
                         event.type === 'yellow_card' ? 'Advarsel' :
                         event.type === 'red_card' ? 'Udvisning' : 
-                        event.type === 'substitution' ? 'Udskiftning' : 'Hændelse'
+                        event.type === 'substitution' ? 'Udskiftning' : 
+                        event.type === 'free_kick' ? 'Frispark' :
+                        event.type === 'penalty' ? 'Straffe' :
+                        event.type === 'corner_kick' ? 'Hjørnespark' :
+                        event.type === 'coach_yellow_card' ? 'Træner' : 'Hændelse'
                       }
                     </div>
                     

@@ -7,7 +7,7 @@ export function LiveMatchTimer({ match }: { match: Match }) {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (match.status === 'first_half' || match.status === 'second_half') {
+    if ((match.status === 'first_half' || match.status === 'second_half') && !match.isPaused) {
       const statusTime = match.statusUpdatedAt || Date.now();
       const baseSeconds = match.elapsedSeconds || 0;
       
@@ -23,7 +23,7 @@ export function LiveMatchTimer({ match }: { match: Match }) {
     }
     
     return () => clearInterval(interval);
-  }, [match.status, match.statusUpdatedAt, match.elapsedSeconds]);
+  }, [match.status, match.statusUpdatedAt, match.elapsedSeconds, match.isPaused]);
 
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
@@ -41,8 +41,9 @@ export function LiveMatchTimer({ match }: { match: Match }) {
   }
 
   return (
-    <span className="font-mono tabular-nums">
-      {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+    <span className="font-mono tabular-nums flex items-center gap-1.5">
+      {match.isPaused && <span className="text-[9px] uppercase tracking-widest text-amber-500 font-bold bg-amber-100/20 px-1.5 py-0.5 rounded leading-none">PAUSE</span>}
+      <span>{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}</span>
     </span>
   );
 }

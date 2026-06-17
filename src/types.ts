@@ -24,7 +24,11 @@ export type EventType =
   | 'own_goal'
   | 'yellow_card' 
   | 'red_card'
-  | 'substitution';
+  | 'substitution'
+  | 'free_kick'
+  | 'penalty'
+  | 'corner_kick'
+  | 'coach_yellow_card';
 
 export type MatchEvent = {
   id: string;
@@ -46,6 +50,7 @@ export type Match = {
   homeScore: number;
   awayScore: number;
   status: MatchStatus;
+  isPaused?: boolean;
   startTime?: number;
   halfDuration: number;
   elapsedSeconds?: number;

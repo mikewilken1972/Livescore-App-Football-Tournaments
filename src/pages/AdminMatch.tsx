@@ -36,7 +36,7 @@ export function AdminMatch() {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (match) {
-      if (match.status === 'first_half' || match.status === 'second_half') {
+      if ((match.status === 'first_half' || match.status === 'second_half') && !match.isPaused) {
         const statusTime = match.statusUpdatedAt || Date.now();
         const baseSeconds = match.elapsedSeconds || 0;
         
@@ -49,7 +49,7 @@ export function AdminMatch() {
       }
     }
     return () => clearInterval(interval);
-  }, [match?.status, match?.statusUpdatedAt, match?.elapsedSeconds]);
+  }, [match?.status, match?.statusUpdatedAt, match?.elapsedSeconds, match?.isPaused]);
 
   useEffect(() => {
     if (!id || !auth.currentUser) return;
@@ -91,9 +91,30 @@ export function AdminMatch() {
       await updateDoc(doc(db, 'matches', id), { 
         status, 
         elapsedSeconds: nextSeconds,
-        statusUpdatedAt: Date.now()
+        statusUpdatedAt: Date.now(),
+        isPaused: false
       });
       setElapsedSeconds(nextSeconds);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
+    }
+  };
+
+  const handleTogglePause = async () => {
+    if (!id || !match) return;
+    try {
+      if (match.isPaused) {
+        await updateDoc(doc(db, 'matches', id), {
+          isPaused: false,
+          statusUpdatedAt: Date.now()
+        });
+      } else {
+        await updateDoc(doc(db, 'matches', id), {
+          isPaused: true,
+          elapsedSeconds: elapsedSeconds,
+          statusUpdatedAt: Date.now()
+        });
+      }
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
     }
@@ -211,6 +232,7 @@ export function AdminMatch() {
             players={players} 
             onAddEvent={handleAddEvent} 
             onUpdateStatus={handleUpdateStatus} 
+            onTogglePause={handleTogglePause}
             onReset={handleReset} 
             currentMinute={elapsedSeconds}
           />
