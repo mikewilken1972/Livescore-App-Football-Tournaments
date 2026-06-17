@@ -16,12 +16,12 @@ jobs:
     - name: Opsæt Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 18 # Matcher din React 18+ version
+        node-version: 20 # Opdateret til Node 20 for at rette npm-fejl med Tailwind (native bindings)
         cache: 'npm'
 
     - name: Installer dependencies
       run: |
-        rm -f package-lock.json
+        rm -rf node_modules package-lock.json
         npm install
 
     - name: Byg projektet (Vite)
