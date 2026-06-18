@@ -44,4 +44,5 @@ jobs:
         protocol: ftps # <- VIGTIGT: Brug sikker FTPS, da Simply.com nogle gange blokerer data-forbindelsen for plain FTP fra Github
         port: 21
         local-dir: ./dist/ # Vite lægger de færdige filer i 'dist' mappen
-        server-dir: /livescore/ # Sender dem til livescore mappen (på samme niveau som public_html)
+        server-dir: livescore/ # Fjernet skråstreg for at undgå rod-adgangs fejl
+        timeout: 120000
