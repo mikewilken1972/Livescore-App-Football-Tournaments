@@ -18,7 +18,7 @@ export default function App() {
         <Route path="/admin/match/:id" element={<AdminMatch />} />
         <Route path="/admin/archive" element={<AdminArchive />} />
       </Routes>
-      <div className="fixed bottom-1 right-2 text-[8px] text-slate-400/50 pointer-events-none z-[100] font-mono">
+      <div className="fixed bottom-1 left-2 text-[8px] text-slate-400/50 pointer-events-none z-[100] font-mono">
         v1.0.1
       </div>
     </>

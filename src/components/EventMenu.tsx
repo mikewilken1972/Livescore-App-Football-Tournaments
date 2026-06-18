@@ -159,41 +159,36 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
             </div>
           </button>
 
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <button 
               onClick={() => setActiveModal('card')}
-              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center hover:bg-slate-50 active:scale-95 transition-transform"
+              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-slate-50 active:scale-95 transition-transform min-h-[80px]"
             >
-              <span className="text-[10px] text-slate-400 uppercase">Kort</span>
-              <span>KORT</span>
+              <span className="text-sm md:text-base uppercase text-amber-500">Gul/Rødt</span>
             </button>
             <button 
               onClick={() => setActiveModal('sub')}
-              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center hover:bg-slate-50 active:scale-95 transition-transform"
+              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-slate-50 active:scale-95 transition-transform min-h-[80px]"
             >
-              <span className="text-[10px] text-slate-400 uppercase">Udskiftning</span>
-              <span>UDSKIFTNING</span>
+              <span className="text-sm md:text-base uppercase text-blue-500">Udskift</span>
             </button>
             <button 
               onClick={() => setActiveModal('free_kick')}
-              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center hover:bg-slate-50 active:scale-95 transition-transform"
+              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-slate-50 active:scale-95 transition-transform min-h-[80px]"
             >
-              <span className="text-[10px] text-slate-400 uppercase">Begivenhed</span>
-              <span>FRISPARK</span>
+              <span className="text-sm md:text-base uppercase text-emerald-500">Frispark</span>
             </button>
             <button 
               onClick={() => setActiveModal('penalty')}
-              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center hover:bg-slate-50 active:scale-95 transition-transform"
+              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-slate-50 active:scale-95 transition-transform min-h-[80px]"
             >
-              <span className="text-[10px] text-slate-400 uppercase">Begivenhed</span>
-              <span>STRAFFE</span>
+              <span className="text-sm md:text-base uppercase text-rose-500">Straffe</span>
             </button>
             <button 
               onClick={() => setActiveModal('corner_kick')}
-              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center hover:bg-slate-50 active:scale-95 transition-transform lg:col-span-1 col-span-2"
+              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-slate-50 active:scale-95 transition-transform min-h-[80px]"
             >
-              <span className="text-[10px] text-slate-400 uppercase">Begivenhed</span>
-              <span>HJØRNESPARK</span>
+              <span className="text-sm md:text-base uppercase text-purple-500 text-center leading-tight">Hjørne<br/>spark</span>
             </button>
           </div>
         </div>

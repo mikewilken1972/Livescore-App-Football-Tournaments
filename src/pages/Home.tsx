@@ -7,7 +7,7 @@ import { Match } from '../types';
 
 import { LiveMatchTimer } from '../components/LiveMatchTimer';
 
-function MatchCard({ match }: { match: Match }) {
+function MatchCard({ match, ...props }: { match: Match; key?: React.Key }) {
   return (
     <Link 
       to={`/match/${match.id}`}

@@ -41,6 +41,7 @@ export function AdminArchive() {
 
   const handleDelete = async (e: React.MouseEvent, matchId: string) => {
     e.preventDefault(); // Stop Link navigation
+    e.stopPropagation(); // Stop event bubbling to Link
     if (window.confirm('Er du sikker på at du vil slette denne kamp og alle dens hændelser?')) {
       try {
         await deleteDoc(doc(db, 'matches', matchId));

@@ -42,4 +42,4 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./dist/ # Vite lægger de færdige filer i 'dist' mappen
-        server-dir: /public_html/ # Sender dem direkte til roden af dit webhotel
+        server-dir: /public_html/livescore/ # <-- ÆNDRET HER: Sender nu til livescore mappen i stedet for roden
