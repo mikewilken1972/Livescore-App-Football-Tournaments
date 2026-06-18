@@ -11,12 +11,12 @@ jobs:
 
     steps:
     - name: Hent kildekode
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Opsæt Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
-        node-version: 20 # Opdateret til Node 20 for at rette npm-fejl med Tailwind (native bindings)
+        node-version: 20 # Bliver automatisk håndteret af v4 bedre
         cache: 'npm'
 
     - name: Installer dependencies
@@ -41,5 +41,7 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
+        protocol: ftps # <- VIGTIGT: Brug sikker FTPS, da Simply.com nogle gange blokerer data-forbindelsen for plain FTP fra Github
+        port: 21
         local-dir: ./dist/ # Vite lægger de færdige filer i 'dist' mappen
         server-dir: /livescore/ # Sender dem til livescore mappen (på samme niveau som public_html)
