@@ -19,6 +19,48 @@ export function AdminMatch() {
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'events' | 'squad'>('events');
+  const [squadTeamTab, setSquadTeamTab] = useState<'home' | 'away'>('home');
+
+  const handleSquadToggle = async (playerId: string, teamType: 'home' | 'away') => {
+    if (!match || !id) return;
+    const squadKey = teamType === 'home' ? 'homeSquad' : 'awaySquad';
+    const currentSquad = match[squadKey] || [];
+    
+    let newSquad;
+    if (currentSquad.includes(playerId)) {
+      newSquad = currentSquad.filter(id => id !== playerId);
+    } else {
+      const maxSquadSize = match.maxSquadSize || 14;
+      if (currentSquad.length >= maxSquadSize) {
+        alert(`Du kan maksimalt vælge ${maxSquadSize} spillere til holdopstillingen.`);
+        return;
+      }
+      newSquad = [...currentSquad, playerId];
+    }
+
+    try {
+      await updateDoc(doc(db, 'matches', id), {
+        [squadKey]: newSquad
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
+    }
+  };
+
+  const handleMaxSquadSizeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!match || !id) return;
+    const val = parseInt(e.target.value);
+    if (!isNaN(val) && val > 0) {
+      try {
+        await updateDoc(doc(db, 'matches', id), {
+          maxSquadSize: val
+        });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
+      }
+    }
+  };
 
   useEffect(() => {
     if (loadingAdmins) return;
@@ -42,7 +84,18 @@ export function AdminMatch() {
         
         interval = setInterval(() => {
           const currentRealSeconds = Math.floor((Date.now() - statusTime) / 1000);
-          setElapsedSeconds(baseSeconds + currentRealSeconds);
+          const newElapsed = baseSeconds + currentRealSeconds;
+          setElapsedSeconds(newElapsed);
+          
+          const halfStart = match.status === 'first_half' ? 0 : match.halfDuration * 60;
+          if (newElapsed - halfStart >= 3600) {
+            updateDoc(doc(db, 'matches', match.id), {
+              isPaused: true,
+              elapsedSeconds: newElapsed,
+              statusUpdatedAt: Date.now()
+            });
+            clearInterval(interval);
+          }
         }, 1000);
       } else {
         setElapsedSeconds(match.elapsedSeconds || 0);
@@ -215,31 +268,95 @@ export function AdminMatch() {
           </div>
           <div className="text-2xl font-bold italic tracking-tighter uppercase">Kampstyring</div>
           <div className="text-xs text-emerald-400 mt-1 font-bold pr-4 truncate">{match.homeTeam.name} vs {match.awayTeam.name}</div>
+          
+          <div className="flex gap-2 mt-4">
+             <button onClick={() => setActiveTab('events')} className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors ${activeTab === 'events' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Hændelser</button>
+             <button onClick={() => setActiveTab('squad')} className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors ${activeTab === 'squad' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Holdopstilling</button>
+          </div>
         </div>
         
-        {match.status === 'finished' && (
-          <div className="bg-emerald-500 text-white p-4 text-center shadow-inner relative z-10">
-             <div className="text-base font-black uppercase tracking-widest">
-                Kampen er afsluttet
-             </div>
-             <div className="text-[10px] uppercase font-bold opacity-80 mt-1">Officielt resultat registreret</div>
+        {activeTab === 'events' ? (
+          <>
+            {match.status === 'finished' && (
+              <div className="bg-emerald-500 text-white p-4 text-center shadow-inner relative z-10">
+                 <div className="text-base font-black uppercase tracking-widest">
+                    Kampen er afsluttet
+                 </div>
+                 <div className="text-[10px] uppercase font-bold opacity-80 mt-1">Officielt resultat registreret</div>
+              </div>
+            )}
+            
+            <div className="flex-1 overflow-y-auto w-full flex flex-col">
+              <EventMenu 
+                match={match} 
+                players={players} 
+                onAddEvent={handleAddEvent} 
+                onUpdateStatus={handleUpdateStatus} 
+                onTogglePause={handleTogglePause}
+                onReset={handleReset} 
+                currentMinute={elapsedSeconds}
+              />
+              <div className="border-t-4 border-slate-200 bg-white">
+                <MatchTimeline match={match} events={events} players={players} />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 overflow-y-auto w-full bg-slate-50 p-4">
+            <div className="flex gap-2 mb-4 bg-slate-200 p-1 rounded-xl">
+              <button 
+                onClick={() => setSquadTeamTab('home')}
+                className={`flex-1 py-2 rounded-lg font-bold text-sm ${squadTeamTab === 'home' ? 'bg-white shadow' : 'text-slate-500'}`}
+              >
+                {match.homeTeam.shortName || 'Hjemme'}
+              </button>
+              <button 
+                onClick={() => setSquadTeamTab('away')}
+                className={`flex-1 py-2 rounded-lg font-bold text-sm ${squadTeamTab === 'away' ? 'bg-white shadow' : 'text-slate-500'}`}
+              >
+                {match.awayTeam.shortName || 'Ude'}
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Maks spillere:</span>
+                  <input 
+                    type="number" 
+                    min="1"
+                    max="99"
+                    value={match.maxSquadSize || 14}
+                    onChange={handleMaxSquadSizeChange}
+                    className="w-16 px-2 py-1 bg-slate-100 border border-slate-300 rounded font-bold text-center text-sm"
+                  />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 bg-emerald-100 px-2 py-1 rounded">
+                  Valgt: {match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad']?.length || 0} / {match.maxSquadSize || 14}
+                </span>
+              </div>
+              <div className="space-y-2">
+              {players.map(p => {
+                const isSelected = (match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad'] || []).includes(p.id);
+                return (
+                  <div 
+                    key={p.id} 
+                    onClick={() => handleSquadToggle(p.id, squadTeamTab)}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  >
+                    <div className={`w-6 h-6 flex items-center justify-center rounded-md border-2 ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'}`}>
+                      {isSelected && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                    </div>
+                    <div className="font-bold text-slate-800 flex-1">
+                       #{p.number} {p.name}
+                    </div>
+                  </div>
+                );
+              })}
+              </div>
+            </div>
           </div>
         )}
-        
-        <div className="flex-1 overflow-y-auto w-full flex flex-col">
-          <EventMenu 
-            match={match} 
-            players={players} 
-            onAddEvent={handleAddEvent} 
-            onUpdateStatus={handleUpdateStatus} 
-            onTogglePause={handleTogglePause}
-            onReset={handleReset} 
-            currentMinute={elapsedSeconds}
-          />
-          <div className="border-t-4 border-slate-200 bg-white">
-            <MatchTimeline match={match} events={events} players={players} />
-          </div>
-        </div>
       </div>
     </div>
   );

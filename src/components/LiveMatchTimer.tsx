@@ -35,6 +35,10 @@ export function LiveMatchTimer({ match }: { match: Match }) {
   if (match.status === 'half_time') {
     return <span>Pause</span>;
   }
+
+  if (match.status === 'penalties') {
+    return <span>Straffespark</span>;
+  }
   
   if (match.status === 'finished') {
     return <span>Slut</span>;

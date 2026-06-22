@@ -12,7 +12,7 @@ export type Player = {
   number?: number;
 };
 
-export type MatchStatus = 'scheduled' | 'first_half' | 'half_time' | 'second_half' | 'finished';
+export type MatchStatus = 'scheduled' | 'first_half' | 'half_time' | 'second_half' | 'penalties' | 'finished';
 
 export type EventType = 
   | 'match_start' 
@@ -55,4 +55,7 @@ export type Match = {
   halfDuration: number;
   elapsedSeconds?: number;
   statusUpdatedAt?: number;
+  homeSquad?: string[];
+  awaySquad?: string[];
+  maxSquadSize?: number;
 };

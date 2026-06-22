@@ -41,6 +41,7 @@ export function AdminManagement() {
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editPlayerName, setEditPlayerName] = useState('');
   const [editPlayerNumber, setEditPlayerNumber] = useState('');
+  const [editPlayerTeamId, setEditPlayerTeamId] = useState('');
 
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
   const [editMatchTourName, setEditMatchTourName] = useState('');
@@ -340,11 +341,19 @@ export function AdminManagement() {
               editingPlayerId === p.id ? (
                 <form key={p.id} onSubmit={(e) => {
                   e.preventDefault();
-                  updateDoc(doc(db, 'players', p.id), { name: editPlayerName, number: parseInt(editPlayerNumber) || 0 });
+                  updateDoc(doc(db, 'players', p.id), { name: editPlayerName, number: parseInt(editPlayerNumber) || 0, teamId: editPlayerTeamId });
                   setEditingPlayerId(null);
                 }} className="flex gap-2 p-3 bg-white rounded-lg shadow-sm flex-wrap border border-slate-200">
                     <input autoFocus className="flex-1 bg-slate-50 border p-1 rounded font-bold min-w-[120px]" value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)} />
                     <input type="number" className="w-16 bg-slate-50 border p-1 rounded font-bold" value={editPlayerNumber} onChange={e => setEditPlayerNumber(e.target.value)} />
+                    <select 
+                      className="bg-slate-50 border p-1 rounded font-bold" 
+                      value={editPlayerTeamId} 
+                      onChange={e => setEditPlayerTeamId(e.target.value)}
+                    >
+                      <option value="" disabled>Vælg hold</option>
+                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
                     <button type="submit" className="text-emerald-500 hover:bg-emerald-50 p-2 rounded"><Check className="w-5 h-5"/></button>
                     <button type="button" onClick={() => setEditingPlayerId(null)} className="text-slate-400 hover:bg-slate-100 p-2 rounded"><X className="w-5 h-5"/></button>
                 </form>
@@ -352,7 +361,8 @@ export function AdminManagement() {
                 <div key={p.id} className="bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group">
                   <span>#{p.number} {p.name} <span className="opacity-50 text-xs ml-2">({teams.find(t=>t.id===p.teamId)?.name})</span></span>
                   <div className="flex gap-1">
-                    <button onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerNumber(String(p.number)); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerNumber(String(p.number)); setEditPlayerTeamId(p.teamId); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
+
                     <button onClick={() => handleDelete('players', p.id)} className="text-slate-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>

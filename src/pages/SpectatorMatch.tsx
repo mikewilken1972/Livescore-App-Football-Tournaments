@@ -6,9 +6,12 @@ import { ChevronLeft, Share } from 'lucide-react';
 import { Match, MatchEvent, Player } from '../types';
 import { doc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+import Confetti from 'react-confetti';
+import { useWindowSize } from 'react-use';
 
 export function SpectatorMatch() {
   const { id } = useParams<{ id: string }>();
+  const { width, height } = useWindowSize();
   
   const [match, setMatch] = useState<Match | null>(null);
   const [events, setEvents] = useState<MatchEvent[]>([]);
@@ -94,8 +97,22 @@ export function SpectatorMatch() {
     return <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4">Kamp ikke fundet <Link to="/" className="text-emerald-500 font-bold decoration-2 underline">Gå tilbage</Link></div>;
   }
 
+  const isU14OrU15Winner = () => {
+    if (!match || match.status !== 'finished') return false;
+    const homeName = match.homeTeam.name.toLowerCase();
+    const awayName = match.awayTeam.name.toLowerCase();
+    const isOurTeam = (name: string) => name.includes('u14 pige') || name.includes('u15 pige') || name.includes('u14') || name.includes('u15');
+    
+    if (match.homeScore > match.awayScore && isOurTeam(homeName)) return true;
+    if (match.awayScore > match.homeScore && isOurTeam(awayName)) return true;
+    return false;
+  };
+
+  const showConfetti = isU14OrU15Winner();
+
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col font-sans pb-safe">
+      {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
       {/* Top Navigation */}
       <div className="bg-slate-800 border-b-2 border-slate-900 px-4 py-3 flex justify-between items-center">
         <Link 

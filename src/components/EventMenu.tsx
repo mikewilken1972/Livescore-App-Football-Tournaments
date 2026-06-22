@@ -25,8 +25,13 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
   const [selectedSubIn, setSelectedSubIn] = useState<string>('');
   const [cardType, setCardType] = useState<'yellow_card' | 'red_card' | 'coach_yellow_card'>('yellow_card');
 
-  const homePlayers = players.filter(p => p.teamId === match.homeTeam.id);
-  const awayPlayers = players.filter(p => p.teamId === match.awayTeam.id);
+  const homePlayers = match.homeSquad && match.homeSquad.length > 0 
+    ? players.filter(p => match.homeSquad!.includes(p.id)) 
+    : players.filter(p => p.teamId === match.homeTeam.id);
+    
+  const awayPlayers = match.awaySquad && match.awaySquad.length > 0
+    ? players.filter(p => match.awaySquad!.includes(p.id))
+    : players.filter(p => p.teamId === match.awayTeam.id);
 
   const resetModals = () => {
     setActiveModal(null);
@@ -112,7 +117,7 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
                  Start 2. Halvleg
                </button>
             )}
-            {match.status === 'second_half' && (
+            {(match.status === 'second_half' || match.status === 'penalties') && (
                <>
                  <button 
                    onClick={() => { onUpdateStatus('finished'); onAddEvent('match_end'); }}
@@ -120,6 +125,14 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
                  >
                    Afslut Kamp
                  </button>
+                 {match.status === 'second_half' && (
+                   <button 
+                     onClick={() => { onUpdateStatus('penalties'); }}
+                     className="col-span-1 bg-violet-100 hover:bg-violet-200 text-violet-700 py-3 rounded-xl font-bold text-sm border-b-4 border-violet-300"
+                   >
+                     Straffespark
+                   </button>
+                 )}
                  <button 
                    onClick={onTogglePause}
                    className={cn("col-span-1 py-3 rounded-xl font-bold text-sm border-b-4", match.isPaused ? "bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300")}
@@ -127,6 +140,14 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
                    {match.isPaused ? "Genoptag" : "Sæt på pause"}
                  </button>
                </>
+            )}
+            {match.status === 'finished' && (
+               <button 
+                 onClick={() => { onUpdateStatus('second_half'); }}
+                 className="col-span-2 bg-amber-100 hover:bg-amber-200 text-amber-700 py-3 rounded-xl font-bold text-sm border-b-4 border-amber-300"
+               >
+                 Genoptag Kamp (Fejlafsluttet)
+               </button>
             )}
         </div>
       </div>
