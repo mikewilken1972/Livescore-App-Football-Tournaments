@@ -7,7 +7,7 @@ import { cn } from '../lib/utils';
 interface EventMenuProps {
   match: Match;
   players: Player[];
-  onAddEvent: (type: EventType, teamId?: string, playerId?: string, assistId?: string) => void;
+  onAddEvent: (type: EventType, teamId?: string, playerId?: string, assistId?: string, description?: string, imageUrl?: string) => void;
   onUpdateStatus: (status: Match['status']) => void;
   onTogglePause: () => void;
   onReset: () => void;
@@ -15,15 +15,17 @@ interface EventMenuProps {
 }
 
 export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onTogglePause, onReset, currentMinute }: EventMenuProps) {
-  const [activeModal, setActiveModal] = useState<'goal_home' | 'goal_away' | 'card' | 'sub' | 'free_kick' | 'penalty' | 'corner_kick' | null>(null);
+  const [activeModal, setActiveModal] = useState<'goal_home' | 'goal_away' | 'card' | 'sub' | 'free_kick' | 'penalty' | 'corner_kick' | 'image' | 'shot_on_target' | 'offside' | null>(null);
   const [selectedScorer, setSelectedScorer] = useState<string>('');
   const [selectedAssist, setSelectedAssist] = useState<string>('');
   
-  // States for Card/Sub modal
+  // States for Card/Sub/Image modal
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [selectedPlayer, setSelectedPlayer] = useState<string>('');
   const [selectedSubIn, setSelectedSubIn] = useState<string>('');
   const [cardType, setCardType] = useState<'yellow_card' | 'red_card' | 'coach_yellow_card'>('yellow_card');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState('');
 
   const homePlayers = match.homeSquad && match.homeSquad.length > 0 
     ? players.filter(p => match.homeSquad!.includes(p.id)) 
@@ -41,6 +43,54 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
     setSelectedPlayer('');
     setSelectedSubIn('');
     setCardType('yellow_card');
+    setImagePreview(null);
+    setCommentText('');
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        // compress image aggressively to fit within firestore string limits nicely
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        setImagePreview(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageSubmit = () => {
+    // Modify onAddEvent to accept description and imageUrl, we'll need to do that via prop change or direct in AdminMatch
+    // We will update AdminMatch shortly. Let's pass description and image as parameters?
+    // Let's pass them as 5th and 6th props. We need to check onAddEvent signature.
+    onAddEvent('image' as EventType, selectedTeam || undefined, undefined, undefined, commentText, imagePreview || undefined);
+    resetModals();
   };
 
   const handleGoalSubmit = () => {
@@ -211,6 +261,24 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
             >
               <span className="text-sm md:text-base uppercase text-purple-500 text-center leading-tight">Hjørne<br/>spark</span>
             </button>
+            <button 
+              onClick={() => setActiveModal('shot_on_target')}
+              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-slate-50 active:scale-95 transition-transform min-h-[80px]"
+            >
+              <span className="text-sm md:text-base uppercase text-indigo-500 text-center leading-tight">Skud på<br/>mål</span>
+            </button>
+            <button 
+              onClick={() => setActiveModal('offside')}
+              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-slate-50 active:scale-95 transition-transform min-h-[80px]"
+            >
+              <span className="text-sm md:text-base uppercase text-orange-500 text-center leading-tight">Offside</span>
+            </button>
+            <button 
+              onClick={() => setActiveModal('image')}
+              className="bg-white border-2 border-slate-200 text-slate-800 p-4 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-slate-50 active:scale-95 transition-transform min-h-[80px] col-span-2 md:col-span-1"
+            >
+              <span className="text-sm md:text-base uppercase text-sky-500 text-center leading-tight">Billede /<br/>Kommentar</span>
+            </button>
           </div>
         </div>
       )}
@@ -247,12 +315,55 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
                     : activeModal === 'card' ? 'Tildel Kort' 
                     : activeModal === 'sub' ? 'Udskiftning'
                     : activeModal === 'free_kick' ? 'Frispark'
-                    : activeModal === 'penalty' ? 'Straffe' : 'Hjørnespark'}
+                    : activeModal === 'penalty' ? 'Straffe' 
+                    : activeModal === 'image' ? 'Tilføj Billede/Kommentar'
+                    : activeModal === 'shot_on_target' ? 'Skud på mål'
+                    : activeModal === 'offside' ? 'Offside'
+                    : 'Hjørnespark'}
                 </h3>
                 <button onClick={resetModals} className="text-slate-400 p-2 -mr-2 bg-slate-100 rounded-full hover:bg-slate-200">
                   <Square className="w-4 h-4" />
                 </button>
               </div>
+
+              {activeModal === 'image' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Billede (Valgfri)</label>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-medium focus:border-sky-500 outline-none file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"
+                    />
+                    {imagePreview && (
+                      <div className="mt-3">
+                        <img src={imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-xl border-2 border-slate-200" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Kommentar (Valgfri men anbefalet)</label>
+                    <textarea 
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-medium focus:border-sky-500 outline-none min-h-[100px] resize-none"
+                      placeholder="Skriv kommentar her..."
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                     <button 
+                       disabled={!imagePreview && !commentText.trim()}
+                       onClick={handleImageSubmit}
+                       className="w-full py-4 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 disabled:bg-slate-300 text-white font-black text-lg border-b-4 border-sky-700 disabled:border-slate-400 rounded-2xl active:border-b-2 active:translate-y-0.5 transition-all"
+                     >
+                       Tilføj Billede/Kommentar
+                     </button>
+                  </div>
+                </div>
+              )}
 
               {(activeModal === 'goal_home' || activeModal === 'goal_away') && (
                 <div className="space-y-4">
@@ -295,7 +406,7 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
                 </div>
               )}
 
-              {(activeModal === 'card' || activeModal === 'sub' || activeModal === 'free_kick' || activeModal === 'penalty' || activeModal === 'corner_kick') && (
+              {(activeModal === 'card' || activeModal === 'sub' || activeModal === 'free_kick' || activeModal === 'penalty' || activeModal === 'corner_kick' || activeModal === 'shot_on_target' || activeModal === 'offside') && (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Hold *</label>

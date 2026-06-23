@@ -28,6 +28,10 @@ export type EventType =
   | 'free_kick'
   | 'penalty'
   | 'corner_kick'
+  | 'shot_on_target'
+  | 'offside'
+  | 'comment'
+  | 'image'
   | 'coach_yellow_card';
 
 export type MatchEvent = {
@@ -39,6 +43,8 @@ export type MatchEvent = {
   teamId?: string;
   playerId?: string;
   assistPlayerId?: string;
+  description?: string;
+  imageUrl?: string;
 };
 
 export type Match = {

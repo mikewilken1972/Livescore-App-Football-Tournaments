@@ -1,6 +1,7 @@
 import React from 'react';
 import { Match } from '../types';
 import { LiveMatchTimer } from './LiveMatchTimer';
+import { cn } from '../lib/utils';
 
 interface MatchHeaderProps {
   match: Match;
@@ -31,8 +32,14 @@ export function MatchHeader({ match }: MatchHeaderProps) {
       </div>
       
       <div className="mt-6 flex justify-center">
-        <span className="bg-red-500 text-white text-[10px] px-3 py-1 rounded-full font-bold flex items-center gap-1.5">
-           {(match.status === 'first_half' || match.status === 'second_half') && (
+        <span className={cn(
+          "text-white text-[10px] px-3 py-1 rounded-full font-bold flex items-center gap-1.5 transition-colors uppercase tracking-widest",
+          match.status === 'scheduled' ? "bg-slate-500" :
+          match.status === 'finished' ? "bg-slate-800" :
+          match.status === 'half_time' ? "bg-amber-500" :
+          match.isPaused ? "bg-amber-500" : "bg-red-500"
+        )}>
+           {(match.status === 'first_half' || match.status === 'second_half') && !match.isPaused && (
               <span className="relative flex h-1.5 w-1.5">
                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>

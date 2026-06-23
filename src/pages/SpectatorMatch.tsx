@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MatchHeader } from '../components/MatchHeader';
 import { MatchTimeline } from '../components/MatchTimeline';
+import { MatchStats } from '../components/MatchStats';
 import { ChevronLeft, Share } from 'lucide-react';
 import { Match, MatchEvent, Player } from '../types';
 import { doc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
@@ -134,7 +135,9 @@ export function SpectatorMatch() {
       <div className="flex-1 overflow-y-auto w-full max-w-sm mx-auto bg-slate-50 md:shadow-2xl md:my-4 md:rounded-[40px] md:border-[12px] md:border-slate-800 flex flex-col relative overflow-hidden">
         <MatchHeader match={match} />
         
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <MatchStats match={match} events={events} />
+          <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mt-8 mb-4 text-center">Hændelser</h3>
           <MatchTimeline match={match} events={events} players={players} />
         </div>
         

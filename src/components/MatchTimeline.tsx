@@ -71,7 +71,10 @@ export function MatchTimeline({ match, events, players }: MatchTimelineProps) {
                       "absolute left-[9.5px] top-1 w-3 h-3 rounded-full ring-4 ring-slate-50",
                       event.type.includes('goal') ? "bg-emerald-500" : 
                       (event.type === 'red_card' ? "bg-red-500" : 
-                       (event.type === 'yellow_card' || event.type === 'coach_yellow_card') ? "bg-yellow-500" : "bg-blue-500")
+                       (event.type === 'yellow_card' || event.type === 'coach_yellow_card') ? "bg-yellow-500" :
+                       event.type === 'image' ? "bg-sky-500" :
+                       event.type === 'shot_on_target' ? "bg-indigo-500" :
+                       event.type === 'offside' ? "bg-orange-500" : "bg-blue-500")
                     )}></div>
                     
                     <div className="text-xs text-slate-400 font-mono font-bold uppercase">
@@ -83,6 +86,9 @@ export function MatchTimeline({ match, events, players }: MatchTimelineProps) {
                         event.type === 'free_kick' ? 'Frispark' :
                         event.type === 'penalty' ? 'Straffe' :
                         event.type === 'corner_kick' ? 'Hjørnespark' :
+                        event.type === 'shot_on_target' ? 'Skud på mål' :
+                        event.type === 'offside' ? 'Offside' :
+                        event.type === 'image' ? 'Billede/Kommentar' :
                         event.type === 'coach_yellow_card' ? 'Træner' : 'Hændelse'
                       }
                     </div>
@@ -105,6 +111,17 @@ export function MatchTimeline({ match, events, players }: MatchTimelineProps) {
                           {event.playerId ? `UD: ${getPlayerName(event.playerId)}` : 'Udskiftning'}
                         </div>
                       </>
+                    ) : event.type === 'image' ? (
+                      <div className="mt-2 space-y-2">
+                        {event.description && (
+                          <div className="text-sm font-medium text-slate-700 bg-white p-3 rounded-xl border border-slate-200">
+                            {event.description}
+                          </div>
+                        )}
+                        {event.imageUrl && (
+                          <img src={event.imageUrl} alt="Hændelse" className="w-full max-w-xs object-cover rounded-xl border-2 border-slate-200 shadow-sm" />
+                        )}
+                      </div>
                     ) : (
                       <div className="text-sm font-bold text-slate-800">{event.playerId ? getPlayerName(event.playerId) : (event.teamId === match.homeTeam.id ? match.homeTeam.name : match.awayTeam.name)}</div>
                     )}

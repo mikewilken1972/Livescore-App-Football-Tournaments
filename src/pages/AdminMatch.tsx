@@ -7,6 +7,7 @@ import { db, auth, handleFirestoreError, OperationType, logOut, useAdminAccess }
 import { Match, MatchEvent, Player, EventType } from '../types';
 import { EventMenu } from '../components/EventMenu';
 import { MatchTimeline } from '../components/MatchTimeline';
+import { MatchStats } from '../components/MatchStats';
 
 export function AdminMatch() {
   const { id } = useParams<{ id: string }>();
@@ -173,7 +174,7 @@ export function AdminMatch() {
     }
   };
 
-  const handleAddEvent = async (type: EventType, teamId?: string, playerId?: string, assistId?: string) => {
+  const handleAddEvent = async (type: EventType, teamId?: string, playerId?: string, assistId?: string, description?: string, imageUrl?: string) => {
     if (!id || !match) return;
     
     try {
@@ -184,7 +185,9 @@ export function AdminMatch() {
         timestamp: Date.now(),
         ...(teamId && { teamId }),
         ...(playerId && { playerId }),
-        ...(assistId && { assistPlayerId: assistId })
+        ...(assistId && { assistPlayerId: assistId }),
+        ...(description && { description }),
+        ...(imageUrl && { imageUrl })
       };
       
       await addDoc(collection(db, 'matches', id, 'events'), dbEvent);
@@ -296,7 +299,9 @@ export function AdminMatch() {
                 onReset={handleReset} 
                 currentMinute={elapsedSeconds}
               />
-              <div className="border-t-4 border-slate-200 bg-white">
+              <div className="border-t-4 border-slate-200 bg-slate-50 px-4 pb-4 overflow-y-auto max-h-[500px]">
+                <MatchStats match={match} events={events} />
+                <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mt-8 mb-4 text-center">Hændelser</h3>
                 <MatchTimeline match={match} events={events} players={players} />
               </div>
             </div>

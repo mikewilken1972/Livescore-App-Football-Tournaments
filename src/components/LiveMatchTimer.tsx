@@ -29,11 +29,11 @@ export function LiveMatchTimer({ match }: { match: Match }) {
   const seconds = elapsedSeconds % 60;
   
   if (match.status === 'scheduled') {
-    return <span>Ikke Startet</span>;
+    return <span>Ikke startet</span>;
   }
   
   if (match.status === 'half_time') {
-    return <span>Pause</span>;
+    return <span>Halvleg</span>;
   }
 
   if (match.status === 'penalties') {
@@ -41,12 +41,16 @@ export function LiveMatchTimer({ match }: { match: Match }) {
   }
   
   if (match.status === 'finished') {
-    return <span>Slut</span>;
+    return <span>Afsluttet</span>;
   }
 
   return (
     <span className="font-mono tabular-nums flex items-center gap-1.5">
-      {match.isPaused && <span className="text-[9px] uppercase tracking-widest text-amber-500 font-bold bg-amber-100/20 px-1.5 py-0.5 rounded leading-none">PAUSE</span>}
+      {match.isPaused ? (
+         <span className="text-[9px] uppercase tracking-widest text-amber-500 font-bold bg-amber-100/20 px-1.5 py-0.5 rounded leading-none">PAUSE</span>
+      ) : (
+         <span className="text-[9px] uppercase tracking-widest text-emerald-100 font-bold bg-white/20 px-1.5 py-0.5 rounded leading-none">I GANG</span>
+      )}
       <span>{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}</span>
     </span>
   );
