@@ -8,6 +8,8 @@ import { Match, MatchEvent, Player, EventType } from '../types';
 import { EventMenu } from '../components/EventMenu';
 import { MatchTimeline } from '../components/MatchTimeline';
 import { MatchStats } from '../components/MatchStats';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { EditEventDialog } from '../components/EditEventDialog';
 
 export function AdminMatch() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +24,9 @@ export function AdminMatch() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'events' | 'squad'>('events');
   const [squadTeamTab, setSquadTeamTab] = useState<'home' | 'away'>('home');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<MatchEvent | null>(null);
+  const [eventToDeleteId, setEventToDeleteId] = useState<string | null>(null);
 
   const handleSquadToggle = async (playerId: string, teamType: 'home' | 'away') => {
     if (!match || !id) return;
@@ -32,7 +37,7 @@ export function AdminMatch() {
     if (currentSquad.includes(playerId)) {
       newSquad = currentSquad.filter(id => id !== playerId);
     } else {
-      const maxSquadSize = match.maxSquadSize || 14;
+      const maxSquadSize = match.maxSquadSize || 17;
       if (currentSquad.length >= maxSquadSize) {
         alert(`Du kan maksimalt vælge ${maxSquadSize} spillere til holdopstillingen.`);
         return;
@@ -205,11 +210,15 @@ export function AdminMatch() {
     }
   };
 
-  const handleReset = async () => {
+  const handleReset = () => {
     if (!id || !match) return;
+    setShowResetConfirm(true);
+  };
+
+  const confirmReset = async () => {
+    if (!id || !match) return;
+    setShowResetConfirm(false);
     try {
-      if (!window.confirm("Er du sikker på at du vil nulstille kampen? Alle hændelser slettes.")) return;
-      
       const eventsRef = collection(db, 'matches', id, 'events');
       const eventsSnapshot = await getDocs(eventsRef);
       const deletePromises = eventsSnapshot.docs.map(evtDoc => deleteDoc(doc(db, 'matches', id, 'events', evtDoc.id)));
@@ -225,6 +234,57 @@ export function AdminMatch() {
       setElapsedSeconds(0);
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
+    }
+  };
+
+  const recalculateMatchScore = async (matchId: string, homeTeamId: string, awayTeamId: string) => {
+    try {
+      const eventsRef = collection(db, 'matches', matchId, 'events');
+      const snapshot = await getDocs(eventsRef);
+      let homeScore = 0;
+      let awayScore = 0;
+      
+      snapshot.docs.forEach(evtDoc => {
+        const data = evtDoc.data();
+        const type = data.type as EventType;
+        const teamId = data.teamId;
+        if (type === 'goal' || type === 'penalty_goal') {
+          if (teamId === homeTeamId) homeScore++;
+          if (teamId === awayTeamId) awayScore++;
+        } else if (type === 'own_goal') {
+          if (teamId === homeTeamId) awayScore++;
+          if (teamId === awayTeamId) homeScore++;
+        }
+      });
+      
+      await updateDoc(doc(db, 'matches', matchId), {
+        homeScore,
+        awayScore
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${matchId}`);
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!id || !match || !eventToDeleteId) return;
+    try {
+      await deleteDoc(doc(db, 'matches', id, 'events', eventToDeleteId));
+      await recalculateMatchScore(id, match.homeTeam.id, match.awayTeam.id);
+      setEventToDeleteId(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `matches/${id}/events/${eventToDeleteId}`);
+    }
+  };
+
+  const handleSaveEditEvent = async (updatedFields: Partial<MatchEvent>) => {
+    if (!id || !match || !editingEvent) return;
+    try {
+      await updateDoc(doc(db, 'matches', id, 'events', editingEvent.id), updatedFields);
+      await recalculateMatchScore(id, match.homeTeam.id, match.awayTeam.id);
+      setEditingEvent(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${id}/events/${editingEvent.id}`);
     }
   };
 
@@ -302,7 +362,14 @@ export function AdminMatch() {
               <div className="border-t-4 border-slate-200 bg-slate-50 px-4 pb-4 overflow-y-auto max-h-[500px]">
                 <MatchStats match={match} events={events} />
                 <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mt-8 mb-4 text-center">Hændelser</h3>
-                <MatchTimeline match={match} events={events} players={players} />
+                <MatchTimeline 
+                  match={match} 
+                  events={events} 
+                  players={players} 
+                  isAdmin={true}
+                  onEditEvent={setEditingEvent}
+                  onDeleteEvent={setEventToDeleteId}
+                />
               </div>
             </div>
           </>
@@ -331,13 +398,13 @@ export function AdminMatch() {
                     type="number" 
                     min="1"
                     max="99"
-                    value={match.maxSquadSize || 14}
+                    value={match.maxSquadSize || 17}
                     onChange={handleMaxSquadSizeChange}
                     className="w-16 px-2 py-1 bg-slate-100 border border-slate-300 rounded font-bold text-center text-sm"
                   />
                 </div>
                 <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 bg-emerald-100 px-2 py-1 rounded">
-                  Valgt: {match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad']?.length || 0} / {match.maxSquadSize || 14}
+                  Valgt: {match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad']?.length || 0} / {match.maxSquadSize || 17}
                 </span>
               </div>
               <div className="space-y-2">
@@ -363,6 +430,28 @@ export function AdminMatch() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={showResetConfirm}
+        title="Nulstil Kamp"
+        message="Er du sikker på at du vil nulstille kampen? Alle hændelser slettes og stillingen nulstilles. Handlingen kan ikke fortrydes."
+        onConfirm={confirmReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
+      <ConfirmDialog
+        isOpen={eventToDeleteId !== null}
+        title="Slet hændelse"
+        message="Er du sikker på at du vil slette denne hændelse? Kampens stilling vil automatisk blive genberegnet."
+        onConfirm={handleDeleteEvent}
+        onCancel={() => setEventToDeleteId(null)}
+      />
+      <EditEventDialog
+        isOpen={editingEvent !== null}
+        event={editingEvent}
+        match={match}
+        players={players}
+        onSave={handleSaveEditEvent}
+        onClose={() => setEditingEvent(null)}
+      />
     </div>
   );
 }

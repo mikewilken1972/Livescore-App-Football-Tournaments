@@ -5,6 +5,7 @@ import { collection, onSnapshot, query, where, doc, deleteDoc } from 'firebase/f
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { db, auth, handleFirestoreError, OperationType, useAdminAccess } from '../firebase';
 import { Match } from '../types';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function AdminArchive() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export function AdminArchive() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (loadingAdmins) return;
@@ -39,16 +41,20 @@ export function AdminArchive() {
     return unsub;
   }, [user]);
 
-  const handleDelete = async (e: React.MouseEvent, matchId: string) => {
+  const handleDelete = (e: React.MouseEvent, matchId: string) => {
     e.preventDefault(); // Stop Link navigation
     e.stopPropagation(); // Stop event bubbling to Link
-    if (window.confirm('Er du sikker på at du vil slette denne kamp og alle dens hændelser?')) {
-      try {
-        await deleteDoc(doc(db, 'matches', matchId));
-      } catch (err) {
-         handleFirestoreError(err, OperationType.DELETE, 'matches');
-      }
+    setMatchToDelete(matchId);
+  };
+
+  const confirmDelete = async () => {
+    if (!matchToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'matches', matchToDelete));
+    } catch (err) {
+       handleFirestoreError(err, OperationType.DELETE, 'matches');
     }
+    setMatchToDelete(null);
   };
 
   return (
@@ -119,6 +125,13 @@ export function AdminArchive() {
           )}
         </main>
       </div>
+      <ConfirmDialog
+        isOpen={matchToDelete !== null}
+        title="Slet kamp"
+        message="Er du sikker på at du vil slette denne kamp og alle dens hændelser? Handlingen kan ikke fortrydes."
+        onConfirm={confirmDelete}
+        onCancel={() => setMatchToDelete(null)}
+      />
     </div>
   );
 }

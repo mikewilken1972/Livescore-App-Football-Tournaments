@@ -50,6 +50,7 @@ function MatchCard({ match, ...props }: { match: Match; key?: React.Key }) {
 
 export function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
+  const [tournamentsData, setTournamentsData] = useState<{name: string, isHidden: boolean}[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<string | null>(null);
@@ -60,8 +61,16 @@ export function Home() {
       let allMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
       allMatches.sort((a, b) => (a.startTime || Number.MAX_SAFE_INTEGER) - (b.startTime || Number.MAX_SAFE_INTEGER));
       setMatches(allMatches);
-      setLoading(false);
     }, err => handleFirestoreError(err, OperationType.LIST, 'matches'));
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'tournaments'));
+    const unsub = onSnapshot(q, snapshot => {
+      setTournamentsData(snapshot.docs.map(d => ({ name: d.data().name, isHidden: d.data().isHidden || false })));
+      setLoading(false);
+    }, err => handleFirestoreError(err, OperationType.LIST, 'tournaments'));
     return unsub;
   }, []);
 
@@ -84,11 +93,14 @@ export function Home() {
            matchDate.getFullYear() === todayYear;
   };
 
-  // Extract unique tournament names
+  // Extract unique tournament names, filtering out hidden ones
   const tournaments = useMemo(() => {
+    const hiddenTournaments = new Set(tournamentsData.filter(t => t.isHidden).map(t => t.name));
     const names = new Set(matches.map(m => m.tournamentName));
-    return Array.from(names).filter(n => typeof n === 'string' && n.trim() !== '').sort();
-  }, [matches]);
+    return Array.from(names)
+      .filter(n => typeof n === 'string' && n.trim() !== '' && !hiddenTournaments.has(n))
+      .sort();
+  }, [matches, tournamentsData]);
 
   const filteredMatches = selectedTournament ? matches.filter(m => m.tournamentName === selectedTournament) : [];
 

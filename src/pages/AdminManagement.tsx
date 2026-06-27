@@ -3,19 +3,22 @@ import { Link } from 'react-router-dom';
 import { collection, addDoc, onSnapshot, query, where, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType, useAdminAccess } from '../firebase';
 import { Match, Player, Team } from '../types';
-import { Pencil, Trash2, X, Check, Shield } from 'lucide-react';
+import { Pencil, Trash2, X, Check, Shield, EyeOff, Eye } from 'lucide-react';
 import { LiveMatchTimer } from '../components/LiveMatchTimer';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function AdminManagement() {
   const [activeTab, setActiveTab] = useState<'tournaments' | 'teams' | 'players' | 'matches' | 'settings'>('matches');
   const { allowedEmails } = useAdminAccess();
   const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [itemToDelete, setItemToDelete] = useState<{ collectionName: string; id: string; title: string; message: string } | null>(null);
+  const [adminToRemove, setAdminToRemove] = useState<string | null>(null);
   
   // States for lists
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [tournaments, setTournaments] = useState<{id: string; name: string}[]>([]);
+  const [tournaments, setTournaments] = useState<{id: string; name: string; isHidden?: boolean}[]>([]);
 
   // Form states
   const [newTournamentName, setNewTournamentName] = useState('');
@@ -57,7 +60,7 @@ export function AdminManagement() {
     }, err => handleFirestoreError(err, OperationType.LIST, 'teams'));
 
     const unsubTourneys = onSnapshot(query(collection(db, 'tournaments'), where('ownerId', '==', uid)), snapshot => {
-      setTournaments(snapshot.docs.map(d => ({ id: d.id, name: d.data().name })));
+      setTournaments(snapshot.docs.map(d => ({ id: d.id, name: d.data().name, isHidden: d.data().isHidden || false })));
     }, err => handleFirestoreError(err, OperationType.LIST, 'tournaments'));
 
     const unsubPlayers = onSnapshot(query(collection(db, 'players'), where('ownerId', '==', uid)), snapshot => {
@@ -78,12 +81,30 @@ export function AdminManagement() {
     };
   }, []);
 
-  const handleDelete = async (collectionName: string, id: string) => {
-    if (!window.confirm('Er du sikker på at du vil slette dette?')) return;
+  const handleDelete = (collectionName: string, id: string) => {
+    setItemToDelete({
+      collectionName,
+      id,
+      title: 'Slet Element',
+      message: 'Er du sikker på at du vil slette dette element? Handlingen kan ikke fortrydes.'
+    });
+  };
+
+  const confirmDeletion = async () => {
+    if (!itemToDelete) return;
     try {
-      await deleteDoc(doc(db, collectionName, id));
+      await deleteDoc(doc(db, itemToDelete.collectionName, itemToDelete.id));
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, collectionName);
+      handleFirestoreError(err, OperationType.DELETE, itemToDelete.collectionName);
+    }
+    setItemToDelete(null);
+  };
+
+  const toggleTournamentVisibility = async (id: string, currentHidden: boolean) => {
+    try {
+      await updateDoc(doc(db, 'tournaments', id), { isHidden: !currentHidden });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'tournaments');
     }
   };
 
@@ -172,6 +193,7 @@ export function AdminManagement() {
         startTime: newMatchStartTime ? new Date(newMatchStartTime).getTime() : 0,
         halfDuration: parseInt(newMatchHalfDuration) || 20,
         elapsedSeconds: 0,
+        maxSquadSize: 17,
         ownerId: auth.currentUser.uid
       });
       setNewMatchHome('');
@@ -199,19 +221,24 @@ export function AdminManagement() {
     }
   };
 
-  const handleRemoveAdmin = async (emailToRemove: string) => {
+  const handleRemoveAdmin = (emailToRemove: string) => {
     if (emailToRemove === 'mikewilken@gmail.com') {
       alert('Kan ikke fjerne hovedadministratoren');
       return;
     }
-    if (!window.confirm(`Er du sikker på du vil fjerne ${emailToRemove}?`)) return;
+    setAdminToRemove(emailToRemove);
+  };
+
+  const confirmRemoveAdmin = async () => {
+    if (!adminToRemove) return;
     try {
       await setDoc(doc(db, 'settings', 'auth'), {
-        allowedEmails: allowedEmails.filter(e => e !== emailToRemove)
+        allowedEmails: allowedEmails.filter(e => e !== adminToRemove)
       });
     } catch (err) {
       alert("Du har ikke rettigheder til at fjerne administratorer.");
     }
+    setAdminToRemove(null);
   };
 
   return (
@@ -254,9 +281,15 @@ export function AdminManagement() {
                     <button type="button" onClick={() => setEditingTournamentId(null)} className="text-slate-400 hover:bg-slate-100 p-2 rounded"><X className="w-5 h-5"/></button>
                 </form>
               ) : (
-                <div key={t.id} className="bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group">
-                  <span>{t.name}</span>
+                <div key={t.id} className={`bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group ${t.isHidden ? 'opacity-50 grayscale' : ''}`}>
+                  <span className="flex items-center gap-2">
+                    {t.name}
+                    {t.isHidden && <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-widest">Skjult</span>}
+                  </span>
                   <div className="flex gap-1">
+                    <button onClick={() => toggleTournamentVisibility(t.id, !!t.isHidden)} className="text-slate-400 hover:text-blue-500 p-2">
+                      {t.isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
                     <button onClick={() => { setEditingTournamentId(t.id); setEditTournamentName(t.name); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
                     <button onClick={() => handleDelete('tournaments', t.id)} className="text-slate-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
                   </div>
@@ -460,7 +493,7 @@ export function AdminManagement() {
                  onChange={e => setNewMatchTourName(e.target.value)}
                >
                  <option value="">Vælg Turnering...</option>
-                 {tournaments.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                 {tournaments.filter(t => !t.isHidden).map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
                  <option value="Træningskamp">Træningskamp</option>
                </select>
                
@@ -562,6 +595,20 @@ export function AdminManagement() {
           </div>
         </div>
       )}
+      <ConfirmDialog 
+        isOpen={itemToDelete !== null}
+        title={itemToDelete?.title || ''}
+        message={itemToDelete?.message || ''}
+        onConfirm={confirmDeletion}
+        onCancel={() => setItemToDelete(null)}
+      />
+      <ConfirmDialog
+        isOpen={adminToRemove !== null}
+        title="Fjern Administrator"
+        message={`Er du sikker på at du vil fjerne ${adminToRemove} som administrator?`}
+        onConfirm={confirmRemoveAdmin}
+        onCancel={() => setAdminToRemove(null)}
+      />
     </div>
   );
 }
