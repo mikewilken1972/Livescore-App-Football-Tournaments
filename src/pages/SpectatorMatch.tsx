@@ -94,8 +94,8 @@ export function SpectatorMatch() {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Henter kamp...</div>;
   }
 
-  if (!match) {
-    return <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4">Kamp ikke fundet <Link to="/" className="text-emerald-500 font-bold decoration-2 underline">Gå tilbage</Link></div>;
+  if (!match || match.isHidden) {
+    return <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4 p-4 text-center">Kampen er ikke tilgængelig eller fundet. <Link to="/" className="text-emerald-500 font-bold decoration-2 underline">Gå tilbage</Link></div>;
   }
 
   const isU14OrU15Winner = () => {

@@ -13,7 +13,7 @@ export function Archive() {
     const q = query(collection(db, 'matches'));
     const unsub = onSnapshot(q, snapshot => {
       let allMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
-      allMatches = allMatches.filter(m => m.status === 'finished');
+      allMatches = allMatches.filter(m => m.status === 'finished' && !m.isHidden);
       // Sort newest top
       allMatches.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
       setMatches(allMatches);

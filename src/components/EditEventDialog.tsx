@@ -55,7 +55,7 @@ export function EditEventDialog({ isOpen, event, match, players, onSave, onClose
 
   // Sorter og filtrer spillere baseret på valgt hold
   const activeTeamPlayers = teamId 
-    ? players.filter(p => p.teamId === teamId).sort((a, b) => a.name.localeCompare(b.name))
+    ? players.filter(p => p.teamIds?.includes(teamId)).sort((a, b) => a.name.localeCompare(b.name))
     : [];
 
   const handleTeamChange = (newTeamId: string) => {

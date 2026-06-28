@@ -18,14 +18,17 @@ export function AdminManagement() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [tournaments, setTournaments] = useState<{id: string; name: string; isHidden?: boolean}[]>([]);
+  const [tournaments, setTournaments] = useState<{id: string; name: string; isHidden?: boolean; startDate?: string; endDate?: string}[]>([]);
 
   // Form states
   const [newTournamentName, setNewTournamentName] = useState('');
+  const [newTournamentStartDate, setNewTournamentStartDate] = useState('');
+  const [newTournamentEndDate, setNewTournamentEndDate] = useState('');
   const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamTournamentId, setNewTeamTournamentId] = useState('');
   
   const [newPlayerName, setNewPlayerName] = useState('');
-  const [newPlayerTeam, setNewPlayerTeam] = useState('');
+  const [newPlayerTeamIds, setNewPlayerTeamIds] = useState<string[]>([]);
   const [newPlayerNumber, setNewPlayerNumber] = useState('');
 
   const [newMatchTourName, setNewMatchTourName] = useState('');
@@ -37,19 +40,32 @@ export function AdminManagement() {
   // Edit states
   const [editingTournamentId, setEditingTournamentId] = useState<string | null>(null);
   const [editTournamentName, setEditTournamentName] = useState('');
+  const [editTournamentStartDate, setEditTournamentStartDate] = useState('');
+  const [editTournamentEndDate, setEditTournamentEndDate] = useState('');
 
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editTeamName, setEditTeamName] = useState('');
+  const [editTeamTournamentId, setEditTeamTournamentId] = useState('');
 
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editPlayerName, setEditPlayerName] = useState('');
   const [editPlayerNumber, setEditPlayerNumber] = useState('');
-  const [editPlayerTeamId, setEditPlayerTeamId] = useState('');
+  const [editPlayerTeamIds, setEditPlayerTeamIds] = useState<string[]>([]);
 
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
   const [editMatchTourName, setEditMatchTourName] = useState('');
   const [editMatchHalfDuration, setEditMatchHalfDuration] = useState('');
   const [editMatchStartTime, setEditMatchStartTime] = useState('');
+  const [editMatchIsHidden, setEditMatchIsHidden] = useState(false);
+  const [newMatchIsHidden, setNewMatchIsHidden] = useState(false);
+
+  const toggleMatchVisibility = async (matchId: string, currentIsHidden: boolean) => {
+    try {
+      await updateDoc(doc(db, 'matches', matchId), { isHidden: !currentIsHidden });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${matchId}`);
+    }
+  };
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -60,7 +76,13 @@ export function AdminManagement() {
     }, err => handleFirestoreError(err, OperationType.LIST, 'teams'));
 
     const unsubTourneys = onSnapshot(query(collection(db, 'tournaments'), where('ownerId', '==', uid)), snapshot => {
-      setTournaments(snapshot.docs.map(d => ({ id: d.id, name: d.data().name, isHidden: d.data().isHidden || false })));
+      setTournaments(snapshot.docs.map(d => ({ 
+        id: d.id, 
+        name: d.data().name, 
+        isHidden: d.data().isHidden || false,
+        startDate: d.data().startDate,
+        endDate: d.data().endDate
+      })));
     }, err => handleFirestoreError(err, OperationType.LIST, 'tournaments'));
 
     const unsubPlayers = onSnapshot(query(collection(db, 'players'), where('ownerId', '==', uid)), snapshot => {
@@ -100,10 +122,25 @@ export function AdminManagement() {
     setItemToDelete(null);
   };
 
+  // Player filters
+  const [playerFilterTeamId, setPlayerFilterTeamId] = useState('');
+  const [playerSortBy, setPlayerSortBy] = useState<'name' | 'number'>('name');
+
+  const sortedPlayers = [...players]
+    .filter(p => !playerFilterTeamId || (p.teamIds && p.teamIds.includes(playerFilterTeamId)))
+    .sort((a, b) => {
+      if (playerSortBy === 'name') return a.name.localeCompare(b.name);
+      return (a.number || 0) - (b.number || 0);
+    });
+
   const toggleTournamentVisibility = async (id: string, currentHidden: boolean) => {
+    // Optimistic update
+    setTournaments(prev => prev.map(t => t.id === id ? { ...t, isHidden: !currentHidden } : t));
     try {
       await updateDoc(doc(db, 'tournaments', id), { isHidden: !currentHidden });
     } catch (err) {
+      // Revert on error
+      setTournaments(prev => prev.map(t => t.id === id ? { ...t, isHidden: currentHidden } : t));
       handleFirestoreError(err, OperationType.UPDATE, 'tournaments');
     }
   };
@@ -114,10 +151,14 @@ export function AdminManagement() {
     try {
       await addDoc(collection(db, 'tournaments'), {
         name: newTournamentName,
+        startDate: newTournamentStartDate || null,
+        endDate: newTournamentEndDate || null,
         createdAt: Date.now(),
         ownerId: auth.currentUser.uid
       });
       setNewTournamentName('');
+      setNewTournamentStartDate('');
+      setNewTournamentEndDate('');
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'tournaments');
     }
@@ -125,10 +166,11 @@ export function AdminManagement() {
 
   const createTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeamName || !auth.currentUser) return;
+    if (!newTeamName || !newTeamTournamentId || !auth.currentUser) return;
     try {
       await addDoc(collection(db, 'teams'), {
         name: newTeamName,
+        tournamentId: newTeamTournamentId,
         shortName: newTeamName.substring(0, 3).toUpperCase(),
         color: '#1D4ED8',
         ownerId: auth.currentUser.uid
@@ -141,16 +183,17 @@ export function AdminManagement() {
 
   const createPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPlayerName || !newPlayerTeam || !auth.currentUser) return;
+    if (!newPlayerName || newPlayerTeamIds.length === 0 || !auth.currentUser) return;
     try {
       await addDoc(collection(db, 'players'), {
         name: newPlayerName,
-        teamId: newPlayerTeam,
+        teamIds: newPlayerTeamIds,
         number: parseInt(newPlayerNumber) || 0,
         ownerId: auth.currentUser.uid
       });
       setNewPlayerName('');
       setNewPlayerNumber('');
+      setNewPlayerTeamIds([]);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'players');
     }
@@ -194,11 +237,13 @@ export function AdminManagement() {
         halfDuration: parseInt(newMatchHalfDuration) || 20,
         elapsedSeconds: 0,
         maxSquadSize: 17,
-        ownerId: auth.currentUser.uid
+        ownerId: auth.currentUser.uid,
+        isHidden: newMatchIsHidden
       });
       setNewMatchHome('');
       setNewMatchAway('');
       setNewMatchStartTime('');
+      setNewMatchIsHidden(false);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'matches');
     }
@@ -256,80 +301,178 @@ export function AdminManagement() {
       </div>
 
       {activeTab === 'tournaments' && (
-        <div className="space-y-4">
-          <form onSubmit={createTournament} className="bg-white p-4 rounded-xl border-2 border-slate-200 space-y-4">
-            <h3 className="font-bold">Opret Turnering</h3>
-            <input 
-              type="text" 
-              placeholder="Turnering navn" 
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-              value={newTournamentName}
-              onChange={e => setNewTournamentName(e.target.value)}
-            />
-            <button type="submit" disabled={!newTournamentName} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50">Opret</button>
-          </form>
-          <div className="space-y-2">
-            {tournaments.map(t => (
-              editingTournamentId === t.id ? (
-                <form key={t.id} onSubmit={(e) => {
-                  e.preventDefault();
-                  updateDoc(doc(db, 'tournaments', t.id), { name: editTournamentName });
-                  setEditingTournamentId(null);
-                }} className="flex gap-2 p-3 bg-white rounded-lg shadow-sm border border-slate-200">
-                    <input autoFocus className="flex-1 bg-slate-50 border p-1 rounded font-bold" value={editTournamentName} onChange={e => setEditTournamentName(e.target.value)} />
-                    <button type="submit" className="text-emerald-500 hover:bg-emerald-50 p-2 rounded"><Check className="w-5 h-5"/></button>
-                    <button type="button" onClick={() => setEditingTournamentId(null)} className="text-slate-400 hover:bg-slate-100 p-2 rounded"><X className="w-5 h-5"/></button>
-                </form>
-              ) : (
-                <div key={t.id} className={`bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group ${t.isHidden ? 'opacity-50 grayscale' : ''}`}>
-                  <span className="flex items-center gap-2">
-                    {t.name}
-                    {t.isHidden && <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-widest">Skjult</span>}
-                  </span>
-                  <div className="flex gap-1">
-                    <button onClick={() => toggleTournamentVisibility(t.id, !!t.isHidden)} className="text-slate-400 hover:text-blue-500 p-2">
-                      {t.isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
-                    <button onClick={() => { setEditingTournamentId(t.id); setEditTournamentName(t.name); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => handleDelete('tournaments', t.id)} className="text-slate-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
+        <div className="grid lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-4">
+            <form onSubmit={createTournament} className="bg-white p-4 rounded-xl border-2 border-slate-200 space-y-4">
+              <h3 className="font-bold">Opret Turnering</h3>
+              <div className="flex flex-col gap-3">
+                <input 
+                  type="text" 
+                  placeholder="Turnering navn" 
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                  value={newTournamentName}
+                  onChange={e => setNewTournamentName(e.target.value)}
+                />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="w-full sm:flex-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Startdato (Valgfri)</label>
+                    <input 
+                      type="date" 
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500 text-sm"
+                      value={newTournamentStartDate}
+                      onChange={e => setNewTournamentStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="w-full sm:flex-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Slutdato (Valgfri)</label>
+                    <input 
+                      type="date" 
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500 text-sm"
+                      value={newTournamentEndDate}
+                      onChange={e => setNewTournamentEndDate(e.target.value)}
+                    />
                   </div>
                 </div>
-              )
-            ))}
+              </div>
+              <button type="submit" disabled={!newTournamentName} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50 mt-2">Opret</button>
+            </form>
+          </div>
+          
+          <div className="lg:col-span-8 space-y-6">
+            {(() => {
+            const today = new Date().toISOString().split('T')[0];
+            const activeTournaments = tournaments.filter(t => !t.endDate || t.endDate >= today);
+            const finishedTournaments = tournaments.filter(t => t.endDate && t.endDate < today);
+            
+            const renderTournamentsList = (list: typeof tournaments) => (
+              <div className="space-y-3">
+                {list.map(t => (
+                  editingTournamentId === t.id ? (
+                    <form key={t.id} onSubmit={(e) => {
+                      e.preventDefault();
+                      updateDoc(doc(db, 'tournaments', t.id), { name: editTournamentName, startDate: editTournamentStartDate || null, endDate: editTournamentEndDate || null });
+                      setEditingTournamentId(null);
+                    }} className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-sm border border-emerald-500">
+                        <input autoFocus className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500" value={editTournamentName} onChange={e => setEditTournamentName(e.target.value)} placeholder="Turneringsnavn" />
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <div className="w-full sm:flex-1">
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Startdato</label>
+                            <input type="date" className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-emerald-500" value={editTournamentStartDate} onChange={e => setEditTournamentStartDate(e.target.value)} />
+                          </div>
+                          <div className="w-full sm:flex-1">
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Slutdato</label>
+                            <input type="date" className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-emerald-500" value={editTournamentEndDate} onChange={e => setEditTournamentEndDate(e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-2">
+                          <button type="button" onClick={() => setEditingTournamentId(null)} className="text-slate-500 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg font-bold text-sm">Annuller</button>
+                          <button type="submit" className="text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-bold text-sm">Gem</button>
+                        </div>
+                    </form>
+                  ) : (
+                    <div key={t.id} className={`bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group flex-wrap gap-2 ${t.isHidden ? 'opacity-50 grayscale' : ''}`}>
+                      <div className="flex flex-col">
+                        <span className="flex items-center gap-2">
+                          {t.name}
+                          {t.isHidden && <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-widest">Skjult</span>}
+                        </span>
+                        {(t.startDate || t.endDate) && (
+                          <span className="text-xs text-slate-400">
+                            {t.startDate ? new Date(t.startDate).toLocaleDateString('da-DK') : 'Ukendt'} - {t.endDate ? new Date(t.endDate).toLocaleDateString('da-DK') : 'Ukendt'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => toggleTournamentVisibility(t.id, !!t.isHidden)} className="text-slate-400 hover:text-blue-500 p-2">
+                          {t.isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        </button>
+                        <button onClick={() => { setEditingTournamentId(t.id); setEditTournamentName(t.name); setEditTournamentStartDate(t.startDate || ''); setEditTournamentEndDate(t.endDate || ''); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete('tournaments', t.id)} className="text-slate-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  )
+                ))}
+              </div>
+            );
+
+            return (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-bold text-slate-800 mb-3">Aktive Turneringer</h3>
+                  {activeTournaments.length === 0 ? <p className="text-sm text-slate-500 italic">Ingen aktive turneringer</p> : renderTournamentsList(activeTournaments)}
+                </div>
+                
+                {finishedTournaments.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-slate-800 mb-3 border-t-2 border-slate-200 pt-4">Afsluttede Turneringer</h3>
+                    {renderTournamentsList(finishedTournaments)}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           </div>
         </div>
       )}
 
       {activeTab === 'teams' && (
-        <div className="space-y-4">
-          <form onSubmit={createTeam} className="bg-white p-4 rounded-xl border-2 border-slate-200 space-y-4">
-            <h3 className="font-bold">Opret Hold</h3>
-            <input 
-              type="text" 
-              placeholder="Hold navn" 
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-              value={newTeamName}
-              onChange={e => setNewTeamName(e.target.value)}
-            />
-            <button type="submit" disabled={!newTeamName} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50">Opret</button>
-          </form>
-          <div className="space-y-2">
+        <div className="grid lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-4">
+            <form onSubmit={createTeam} className="bg-white p-4 rounded-xl border-2 border-slate-200 space-y-4">
+              <h3 className="font-bold">Opret Hold</h3>
+              <div className="flex gap-2 flex-col xl:flex-row">
+                <input 
+                  type="text" 
+                  placeholder="Hold navn" 
+                  className="w-full xl:flex-[2] bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                  value={newTeamName}
+                  onChange={e => setNewTeamName(e.target.value)}
+                />
+                <select 
+                  className="w-full xl:flex-1 bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                  value={newTeamTournamentId}
+                  onChange={e => setNewTeamTournamentId(e.target.value)}
+                >
+                  <option value="">Vælg turnering</option>
+                  {tournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <button type="submit" disabled={!newTeamName || !newTeamTournamentId} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50">Opret</button>
+            </form>
+          </div>
+          
+          <div className="lg:col-span-8 space-y-2">
             {teams.map(t => (
               editingTeamId === t.id ? (
                 <form key={t.id} onSubmit={(e) => {
                   e.preventDefault();
-                  updateDoc(doc(db, 'teams', t.id), { name: editTeamName, shortName: editTeamName.substring(0, 3).toUpperCase() });
+                  updateDoc(doc(db, 'teams', t.id), { name: editTeamName, shortName: editTeamName.substring(0, 3).toUpperCase(), tournamentId: editTeamTournamentId });
                   setEditingTeamId(null);
-                }} className="flex gap-2 p-3 bg-white rounded-lg shadow-sm border border-slate-200">
-                    <input autoFocus className="flex-1 bg-slate-50 border p-1 rounded font-bold" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} />
-                    <button type="submit" className="text-emerald-500 hover:bg-emerald-50 p-2 rounded"><Check className="w-5 h-5"/></button>
-                    <button type="button" onClick={() => setEditingTeamId(null)} className="text-slate-400 hover:bg-slate-100 p-2 rounded"><X className="w-5 h-5"/></button>
+                }} className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-sm border border-emerald-500">
+                    <input autoFocus className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} placeholder="Holdnavn" />
+                    <select 
+                      className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500 text-sm"
+                      value={editTeamTournamentId}
+                      onChange={e => setEditTeamTournamentId(e.target.value)}
+                    >
+                      <option value="">Vælg turnering</option>
+                      {tournaments.map(tour => <option key={tour.id} value={tour.id}>{tour.name}</option>)}
+                    </select>
+                    <div className="flex justify-end gap-2 mt-2">
+                      <button type="button" onClick={() => setEditingTeamId(null)} className="text-slate-500 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg font-bold text-sm">Annuller</button>
+                      <button type="submit" className="text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-bold text-sm">Gem</button>
+                    </div>
                 </form>
               ) : (
                 <div key={t.id} className="bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group">
-                  <span>{t.name}</span>
+                  <div>
+                    <span>{t.name}</span>
+                    <span className="block text-xs font-normal text-slate-500">
+                      {tournaments.find(tour => tour.id === (t as any).tournamentId)?.name || 'Ingen turnering'}
+                    </span>
+                  </div>
                   <div className="flex gap-1">
-                    <button onClick={() => { setEditingTeamId(t.id); setEditTeamName(t.name); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => { setEditingTeamId(t.id); setEditTeamName(t.name); setEditTeamTournamentId((t as any).tournamentId || ''); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
                     <button onClick={() => handleDelete('teams', t.id)} className="text-slate-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
@@ -340,61 +483,102 @@ export function AdminManagement() {
       )}
 
       {activeTab === 'players' && (
-        <div className="space-y-4">
-          <form onSubmit={createPlayer} className="bg-white p-4 rounded-xl border-2 border-slate-200 space-y-3">
-            <h3 className="font-bold">Opret Spiller</h3>
+        <div className="grid lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-4">
+            <form onSubmit={createPlayer} className="bg-white p-4 rounded-xl border-2 border-slate-200 space-y-3">
+              <h3 className="font-bold">Opret Spiller</h3>
+              <div className="text-sm font-bold text-slate-500 mb-2">Vælg Hold</div>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
+                {teams.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setNewPlayerTeamIds(prev => prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id])}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all border-2 ${newPlayerTeamIds.includes(t.id) ? 'bg-emerald-50 text-emerald-600 border-emerald-500' : 'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-200 hover:border-slate-300'}`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+                {teams.length === 0 && <span className="text-xs text-slate-400 italic p-2">Ingen hold oprettet</span>}
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Spiller navn" 
+                  className="flex-1 w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                  value={newPlayerName}
+                  onChange={e => setNewPlayerName(e.target.value)}
+                />
+                <input 
+                  type="number" 
+                  placeholder="Nr." 
+                  className="w-20 bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                  value={newPlayerNumber}
+                  onChange={e => setNewPlayerNumber(e.target.value)}
+                />
+              </div>
+              <button type="submit" disabled={!newPlayerName || newPlayerTeamIds.length === 0} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50">Opret</button>
+            </form>
+          </div>
+          
+          <div className="lg:col-span-8 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-2 mb-4 bg-slate-100 p-2 rounded-xl">
             <select 
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-              value={newPlayerTeam}
-              onChange={e => setNewPlayerTeam(e.target.value)}
+              className="w-full sm:flex-1 bg-white border-2 border-slate-200 rounded-lg p-2 text-sm font-bold outline-none focus:border-emerald-500"
+              value={playerFilterTeamId}
+              onChange={e => setPlayerFilterTeamId(e.target.value)}
             >
-              <option value="">Vælg Hold...</option>
+              <option value="">Alle hold</option>
               {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Spiller navn" 
-                className="flex-1 bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-                value={newPlayerName}
-                onChange={e => setNewPlayerName(e.target.value)}
-              />
-              <input 
-                type="number" 
-                placeholder="Nr." 
-                className="w-20 bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-                value={newPlayerNumber}
-                onChange={e => setNewPlayerNumber(e.target.value)}
-              />
-            </div>
-            <button type="submit" disabled={!newPlayerName || !newPlayerTeam} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50">Opret</button>
-          </form>
+            <select 
+              className="w-full sm:flex-1 bg-white border-2 border-slate-200 rounded-lg p-2 text-sm font-bold outline-none focus:border-emerald-500"
+              value={playerSortBy}
+              onChange={e => setPlayerSortBy(e.target.value as 'name' | 'number')}
+            >
+              <option value="name">Sortér efter navn</option>
+              <option value="number">Sortér efter nummer</option>
+            </select>
+          </div>
           <div className="space-y-2">
-            {players.map(p => (
+            {sortedPlayers.map(p => (
               editingPlayerId === p.id ? (
                 <form key={p.id} onSubmit={(e) => {
                   e.preventDefault();
-                  updateDoc(doc(db, 'players', p.id), { name: editPlayerName, number: parseInt(editPlayerNumber) || 0, teamId: editPlayerTeamId });
+                  updateDoc(doc(db, 'players', p.id), { name: editPlayerName, number: parseInt(editPlayerNumber) || 0, teamIds: editPlayerTeamIds });
                   setEditingPlayerId(null);
-                }} className="flex gap-2 p-3 bg-white rounded-lg shadow-sm flex-wrap border border-slate-200">
-                    <input autoFocus className="flex-1 bg-slate-50 border p-1 rounded font-bold min-w-[120px]" value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)} />
-                    <input type="number" className="w-16 bg-slate-50 border p-1 rounded font-bold" value={editPlayerNumber} onChange={e => setEditPlayerNumber(e.target.value)} />
-                    <select 
-                      className="bg-slate-50 border p-1 rounded font-bold" 
-                      value={editPlayerTeamId} 
-                      onChange={e => setEditPlayerTeamId(e.target.value)}
-                    >
-                      <option value="" disabled>Vælg hold</option>
-                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                    <button type="submit" className="text-emerald-500 hover:bg-emerald-50 p-2 rounded"><Check className="w-5 h-5"/></button>
-                    <button type="button" onClick={() => setEditingPlayerId(null)} className="text-slate-400 hover:bg-slate-100 p-2 rounded"><X className="w-5 h-5"/></button>
+                }} className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-sm border border-emerald-500">
+                    <div className="flex gap-2">
+                      <input autoFocus className="flex-[3] bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500" value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)} placeholder="Spillernavn" />
+                      <input type="number" className="flex-1 min-w-[60px] bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500 text-center" value={editPlayerNumber} onChange={e => setEditPlayerNumber(e.target.value)} placeholder="Nr" />
+                    </div>
+                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
+                      {teams.map(t => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setEditPlayerTeamIds(prev => prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id])}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all border-2 ${editPlayerTeamIds.includes(t.id) ? 'bg-emerald-50 text-emerald-600 border-emerald-500' : 'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-200 hover:border-slate-300'}`}
+                        >
+                          {t.name}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex justify-end gap-2 mt-2">
+                      <button type="button" onClick={() => setEditingPlayerId(null)} className="text-slate-500 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg font-bold text-sm">Annuller</button>
+                      <button type="submit" className="text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-bold text-sm">Gem</button>
+                    </div>
                 </form>
               ) : (
                 <div key={p.id} className="bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group">
-                  <span>#{p.number} {p.name} <span className="opacity-50 text-xs ml-2">({teams.find(t=>t.id===p.teamId)?.name})</span></span>
+                  <div className="flex flex-col">
+                    <span>#{p.number} {p.name}</span>
+                    <span className="opacity-50 text-xs">
+                      {p.teamIds?.map(tid => teams.find(t => t.id === tid)?.name).filter(Boolean).join(', ')}
+                    </span>
+                  </div>
                   <div className="flex gap-1">
-                    <button onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerNumber(String(p.number)); setEditPlayerTeamId(p.teamId); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerNumber(String(p.number)); setEditPlayerTeamIds(p.teamIds || []); }} className="text-slate-400 hover:text-emerald-500 p-2"><Pencil className="w-4 h-4" /></button>
 
                     <button onClick={() => handleDelete('players', p.id)} className="text-slate-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
                   </div>
@@ -403,12 +587,88 @@ export function AdminManagement() {
             ))}
           </div>
         </div>
+        </div>
       )}
 
       {activeTab === 'matches' && (
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <h3 className="font-bold text-slate-800">Aktive Kampe</h3>
+        <div className="grid lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-4">
+             <form onSubmit={createMatch} className="bg-slate-100 p-4 rounded-xl border-2 border-slate-200 space-y-3">
+               <h3 className="font-bold text-slate-800">Opret ny kamp</h3>
+               <select 
+                 className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                 value={newMatchTourName}
+                 onChange={e => setNewMatchTourName(e.target.value)}
+               >
+                 <option value="">Vælg Turnering...</option>
+                 {tournaments.filter(t => !t.isHidden).map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+               </select>
+               
+               <div className="grid gap-2">
+                 <div className="relative">
+                   <input 
+                     type="text" 
+                     list="home-teams-list"
+                     placeholder="Hjemmehold (Vælg eller skriv fritekst)"
+                     className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                     value={newMatchHome}
+                     onChange={e => setNewMatchHome(e.target.value)}
+                   />
+                   <datalist id="home-teams-list">
+                     {teams.filter(t => t.name !== newMatchAway && (!newMatchTourName || t.tournamentId === tournaments.find(tour => tour.name === newMatchTourName)?.id)).map(t => <option key={t.id} value={t.name} />)}
+                   </datalist>
+                 </div>
+                 <div className="relative">
+                   <input 
+                     type="text" 
+                     list="away-teams-list"
+                     placeholder="Udehold (Vælg eller skriv fritekst)"
+                     className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                     value={newMatchAway}
+                     onChange={e => setNewMatchAway(e.target.value)}
+                   />
+                   <datalist id="away-teams-list">
+                     {teams.filter(t => t.name !== newMatchHome && (!newMatchTourName || t.tournamentId === tournaments.find(tour => tour.name === newMatchTourName)?.id)).map(t => <option key={t.id} value={t.name} />)}
+                   </datalist>
+                 </div>
+               </div>
+               
+               <div className="flex flex-col sm:flex-row gap-2">
+                 <div className="w-full sm:flex-[2] min-w-0">
+                   <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 truncate">Dato & Tid</label>
+                   <input 
+                     type="datetime-local" 
+                     className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-sm sm:text-base text-slate-800 font-bold outline-none focus:border-emerald-500"
+                     value={newMatchStartTime}
+                     onChange={e => setNewMatchStartTime(e.target.value)}
+                   />
+                 </div>
+                 <div className="w-full sm:flex-1 min-w-0">
+                   <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 truncate">Halvleg (min)</label>
+                   <input 
+                     type="number" 
+                     placeholder="20" 
+                     className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-sm sm:text-base text-slate-800 font-bold outline-none focus:border-emerald-500"
+                     value={newMatchHalfDuration}
+                     onChange={e => setNewMatchHalfDuration(e.target.value)}
+                   />
+                 </div>
+               </div>
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 select-none pb-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={newMatchIsHidden} 
+                    onChange={e => setNewMatchIsHidden(e.target.checked)} 
+                    className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                  />
+                  Skjul denne kamp fra livescore ved oprettelse
+                </label>
+                <button type="submit" disabled={!newMatchHome || !newMatchAway || !newMatchTourName} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50">Opret Kamp</button>
+             </form>
+          </div>
+          <div className="lg:col-span-8 space-y-6">
+            <div className="space-y-2">
+              <h3 className="font-bold text-slate-800">Aktive Kampe</h3>
             
             {matches.filter(m => m.status !== 'finished').sort((a,b) => (a.startTime || Number.MAX_SAFE_INTEGER) - (b.startTime || Number.MAX_SAFE_INTEGER)).map(m => (
               editingMatchId === m.id ? (
@@ -418,27 +678,44 @@ export function AdminManagement() {
                     tournamentName: editMatchTourName, 
                     halfDuration: parseInt(editMatchHalfDuration) || 20,
                     startTime: editMatchStartTime ? new Date(editMatchStartTime).getTime() : 0, 
+                    isHidden: editMatchIsHidden
                   });
                   setEditingMatchId(null);
-                }} className="flex flex-col gap-2 p-3 bg-white rounded-lg shadow-sm border border-slate-200">
-                    <input autoFocus className="flex-1 bg-slate-50 border p-2 rounded font-bold" placeholder="Turnering navn" value={editMatchTourName} onChange={e => setEditMatchTourName(e.target.value)} />
-                    <div className="flex gap-2">
-                       <input type="datetime-local" className="flex-[2] min-w-0 bg-slate-50 border p-2 rounded font-bold text-sm" value={editMatchStartTime} onChange={e => setEditMatchStartTime(e.target.value)} />
-                       <input type="number" className="flex-1 min-w-0 bg-slate-50 border p-2 rounded font-bold text-sm" placeholder="Min/halv" value={editMatchHalfDuration} onChange={e => setEditMatchHalfDuration(e.target.value)} />
+                }} className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-sm border border-emerald-500">
+                    <input autoFocus className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500" placeholder="Turnering navn" value={editMatchTourName} onChange={e => setEditMatchTourName(e.target.value)} />
+                    <div className="flex flex-col sm:flex-row gap-2">
+                       <input type="datetime-local" className="w-full sm:flex-[2] bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-emerald-500" value={editMatchStartTime} onChange={e => setEditMatchStartTime(e.target.value)} />
+                       <input type="number" className="w-full sm:flex-1 bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-emerald-500" placeholder="Min/halv" value={editMatchHalfDuration} onChange={e => setEditMatchHalfDuration(e.target.value)} />
                     </div>
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-600 select-none mt-1">
+                      <input 
+                        type="checkbox" 
+                        checked={editMatchIsHidden} 
+                        onChange={e => setEditMatchIsHidden(e.target.checked)} 
+                        className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                      />
+                      Skjul kamp fra livescore (kun synlig for admin)
+                    </label>
                     <div className="flex justify-end gap-2 mt-2">
-                      <button type="button" onClick={() => setEditingMatchId(null)} className="text-slate-500 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg font-bold">Annuller</button>
-                      <button type="submit" className="text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-bold">Gem Egenskaber</button>
+                      <button type="button" onClick={() => setEditingMatchId(null)} className="text-slate-500 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg font-bold text-sm">Annuller</button>
+                      <button type="submit" className="text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-bold text-sm">Gem</button>
                     </div>
                 </form>
               ) : (
-                <div key={m.id} className="relative bg-white p-3 rounded-lg shadow-sm border border-slate-200 group">
+                <div key={m.id} className={`relative bg-white p-3 rounded-lg shadow-sm border border-slate-200 group transition-opacity ${m.isHidden ? 'opacity-70 bg-slate-50/50' : ''}`}>
                   <div className="absolute right-2 top-2 flex gap-1 z-20">
+                    <button onClick={(e) => { 
+                      e.preventDefault(); 
+                      toggleMatchVisibility(m.id, !!m.isHidden);
+                    }} className="text-slate-400 hover:text-amber-500 bg-white/80 backdrop-blur-sm p-1.5 rounded-md" title={m.isHidden ? "Vis kamp" : "Skjul kamp"}>
+                      {m.isHidden ? <Eye className="w-4 h-4 text-amber-500" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
                     <button onClick={(e) => { 
                       e.preventDefault(); 
                       setEditingMatchId(m.id); 
                       setEditMatchTourName(m.tournamentName); 
                       setEditMatchHalfDuration(String(m.halfDuration)); 
+                      setEditMatchIsHidden(!!m.isHidden);
                       if (m.startTime) {
                         const tzOffset = (new Date()).getTimezoneOffset() * 60000;
                         const localISOTime = (new Date(m.startTime - tzOffset)).toISOString().slice(0, 16);
@@ -450,7 +727,7 @@ export function AdminManagement() {
                     <button onClick={(e) => { e.preventDefault(); handleDelete('matches', m.id); }} className="text-slate-400 hover:text-red-500 bg-white/80 backdrop-blur-sm p-1.5 rounded-md"><Trash2 className="w-4 h-4" /></button>
                   </div>
                   <Link to={`/admin/match/${m.id}`} className="block hover:border-emerald-500 transition-colors">
-                    <div className="flex justify-between items-center text-[10px] uppercase font-bold text-slate-400 mb-1 pr-16">
+                    <div className="flex justify-between items-center text-[10px] uppercase font-bold text-slate-400 mb-1 pr-24">
                       <div className="flex items-center gap-2">
                         {(m.status === 'first_half' || m.status === 'second_half') && (
                           <div className="text-emerald-600 flex items-center gap-2">
@@ -462,6 +739,9 @@ export function AdminManagement() {
                           </div>
                         )}
                         <span>{m.tournamentName} - {m.halfDuration} min. halvleg</span>
+                        {m.isHidden && (
+                          <span className="text-[9px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded uppercase tracking-wider font-extrabold">Skjult</span>
+                        )}
                       </div>
                       {m.startTime ? <span>{new Date(m.startTime).toLocaleString('da-DK', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span> : null}
                     </div>
@@ -483,73 +763,7 @@ export function AdminManagement() {
               </Link>
             </div>
           </div>
-          
-          <div className="pt-4 border-t-2 border-slate-200">
-             <form onSubmit={createMatch} className="bg-slate-100 p-4 rounded-xl border-2 border-slate-200 space-y-3">
-               <h3 className="font-bold text-slate-800">Opret ny kamp</h3>
-               <select 
-                 className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-                 value={newMatchTourName}
-                 onChange={e => setNewMatchTourName(e.target.value)}
-               >
-                 <option value="">Vælg Turnering...</option>
-                 {tournaments.filter(t => !t.isHidden).map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                 <option value="Træningskamp">Træningskamp</option>
-               </select>
-               
-               <div className="grid gap-2">
-                 <div className="relative">
-                   <input 
-                     type="text" 
-                     list="home-teams-list"
-                     placeholder="Hjemmehold (Vælg eller skriv fritekst)"
-                     className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-                     value={newMatchHome}
-                     onChange={e => setNewMatchHome(e.target.value)}
-                   />
-                   <datalist id="home-teams-list">
-                     {teams.filter(t => t.name !== newMatchAway).map(t => <option key={t.id} value={t.name} />)}
-                   </datalist>
-                 </div>
-                 <div className="relative">
-                   <input 
-                     type="text" 
-                     list="away-teams-list"
-                     placeholder="Udehold (Vælg eller skriv fritekst)"
-                     className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-                     value={newMatchAway}
-                     onChange={e => setNewMatchAway(e.target.value)}
-                   />
-                   <datalist id="away-teams-list">
-                     {teams.filter(t => t.name !== newMatchHome).map(t => <option key={t.id} value={t.name} />)}
-                   </datalist>
-                 </div>
-               </div>
-               
-               <div className="flex gap-2">
-                 <div className="flex-[2] min-w-0">
-                   <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 truncate">Dato & Tid</label>
-                   <input 
-                     type="datetime-local" 
-                     className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-sm sm:text-base text-slate-800 font-bold outline-none focus:border-emerald-500"
-                     value={newMatchStartTime}
-                     onChange={e => setNewMatchStartTime(e.target.value)}
-                   />
-                 </div>
-                 <div className="flex-1 min-w-0">
-                   <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 truncate">Halvleg (min)</label>
-                   <input 
-                     type="number" 
-                     placeholder="20" 
-                     className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-sm sm:text-base text-slate-800 font-bold outline-none focus:border-emerald-500"
-                     value={newMatchHalfDuration}
-                     onChange={e => setNewMatchHalfDuration(e.target.value)}
-                   />
-                 </div>
-               </div>
-               <button type="submit" disabled={!newMatchHome || !newMatchAway || !newMatchTourName} className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl disabled:opacity-50">Opret Kamp</button>
-             </form>
-          </div>
+        </div>
         </div>
       )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Archive as ArchiveIcon, ArrowLeft, Trash2 } from 'lucide-react';
-import { collection, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { Archive as ArchiveIcon, ArrowLeft, Trash2, Eye, EyeOff } from 'lucide-react';
+import { collection, onSnapshot, query, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { db, auth, handleFirestoreError, OperationType, useAdminAccess } from '../firebase';
 import { Match } from '../types';
@@ -47,6 +47,16 @@ export function AdminArchive() {
     setMatchToDelete(matchId);
   };
 
+  const toggleMatchVisibility = async (e: React.MouseEvent, matchId: string, currentIsHidden: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await updateDoc(doc(db, 'matches', matchId), { isHidden: !currentIsHidden });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${matchId}`);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!matchToDelete) return;
     try {
@@ -80,22 +90,36 @@ export function AdminArchive() {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {matches.map(match => (
+               {matches.map(match => (
                 <Link 
                   key={match.id} 
                   to={`/admin/match/${match.id}`}
-                  className="block bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group relative"
+                  className={`block bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group relative ${match.isHidden ? 'opacity-70 bg-slate-50/50' : ''}`}
                 >
-                  <button
-                    onClick={(e) => handleDelete(e, match.id)}
-                    className="absolute top-2 right-2 p-2 text-slate-300 hover:text-red-500 transition-colors z-10"
-                    title="Slet kamp"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="absolute top-2 right-2 flex gap-1 z-10">
+                    <button
+                      onClick={(e) => toggleMatchVisibility(e, match.id, !!match.isHidden)}
+                      className="p-2 text-slate-300 hover:text-amber-500 transition-colors"
+                      title={match.isHidden ? "Vis kamp" : "Skjul kamp"}
+                    >
+                      {match.isHidden ? <Eye className="w-4 h-4 text-amber-500" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(e, match.id)}
+                      className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                      title="Slet kamp"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
 
-                  <div className="flex justify-between items-center text-[10px] uppercase tracking-widest opacity-60 mb-3 font-bold text-slate-500 pr-8">
-                    <span>{match.tournamentName} {match.groupName ? `• ${match.groupName}` : ''}</span>
+                  <div className="flex justify-between items-center text-[10px] uppercase tracking-widest opacity-60 mb-3 font-bold text-slate-500 pr-16">
+                    <div className="flex items-center gap-2">
+                      <span>{match.tournamentName} {match.groupName ? `• ${match.groupName}` : ''}</span>
+                      {match.isHidden && (
+                        <span className="text-[9px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded uppercase tracking-wider font-extrabold">Skjult</span>
+                      )}
+                    </div>
                     {match.startTime ? <span>{new Date(match.startTime).toLocaleString('da-DK', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span> : null}
                   </div>
                   

@@ -1,13 +1,14 @@
 export type Team = {
   id: string;
   name: string;
+  tournamentId: string;
   shortName?: string;
   color?: string;
 };
 
 export type Player = {
   id: string;
-  teamId: string;
+  teamIds: string[];
   name: string;
   number?: number;
 };
@@ -72,4 +73,5 @@ export type Match = {
   awaySquad?: string[];
   maxSquadSize?: number;
   adminComments?: AdminComment[];
+  isHidden?: boolean;
 };

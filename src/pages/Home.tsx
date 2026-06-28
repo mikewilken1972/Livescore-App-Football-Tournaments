@@ -59,6 +59,7 @@ export function Home() {
     const q = query(collection(db, 'matches'));
     const unsub = onSnapshot(q, snapshot => {
       let allMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+      allMatches = allMatches.filter(m => !m.isHidden);
       allMatches.sort((a, b) => (a.startTime || Number.MAX_SAFE_INTEGER) - (b.startTime || Number.MAX_SAFE_INTEGER));
       setMatches(allMatches);
     }, err => handleFirestoreError(err, OperationType.LIST, 'matches'));
@@ -93,14 +94,16 @@ export function Home() {
            matchDate.getFullYear() === todayYear;
   };
 
-  // Extract unique tournament names, filtering out hidden ones
+  // Extract valid tournament names created in the system
   const tournaments = useMemo(() => {
-    const hiddenTournaments = new Set(tournamentsData.filter(t => t.isHidden).map(t => t.name));
-    const names = new Set(matches.map(m => m.tournamentName));
-    return Array.from(names)
-      .filter(n => typeof n === 'string' && n.trim() !== '' && !hiddenTournaments.has(n))
-      .sort();
-  }, [matches, tournamentsData]);
+    // Only show tournaments that are explicitly created in the system and not hidden
+    const validTournaments = tournamentsData
+      .filter(t => !t.isHidden)
+      .map(t => t.name)
+      .filter(n => typeof n === 'string' && n.trim() !== '');
+      
+    return Array.from(new Set(validTournaments)).sort();
+  }, [tournamentsData]);
 
   const filteredMatches = selectedTournament ? matches.filter(m => m.tournamentName === selectedTournament) : [];
 

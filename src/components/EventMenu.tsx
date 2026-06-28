@@ -29,11 +29,11 @@ export function EventMenu({ match, players, onAddEvent, onUpdateStatus, onToggle
 
   const homePlayers = match.homeSquad && match.homeSquad.length > 0 
     ? players.filter(p => match.homeSquad!.includes(p.id)) 
-    : players.filter(p => p.teamId === match.homeTeam.id);
+    : players.filter(p => p.teamIds?.includes(match.homeTeam.id));
     
   const awayPlayers = match.awaySquad && match.awaySquad.length > 0
     ? players.filter(p => match.awaySquad!.includes(p.id))
-    : players.filter(p => p.teamId === match.awayTeam.id);
+    : players.filter(p => p.teamIds?.includes(match.awayTeam.id));
 
   const resetModals = () => {
     setActiveModal(null);
