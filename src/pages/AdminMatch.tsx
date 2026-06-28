@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, collection, onSnapshot, updateDoc, addDoc, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { ChevronLeft, Shield } from 'lucide-react';
+import { ChevronLeft, Shield, BookOpen, MessageSquare, Trash2, Pencil, Check, X } from 'lucide-react';
 import { db, auth, handleFirestoreError, OperationType, logOut, useAdminAccess } from '../firebase';
-import { Match, MatchEvent, Player, EventType } from '../types';
+import { Match, MatchEvent, Player, EventType, AdminComment } from '../types';
 import { EventMenu } from '../components/EventMenu';
 import { MatchTimeline } from '../components/MatchTimeline';
 import { MatchStats } from '../components/MatchStats';
@@ -22,11 +22,18 @@ export function AdminMatch() {
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'events' | 'squad'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'squad' | 'notes'>('events');
   const [squadTeamTab, setSquadTeamTab] = useState<'home' | 'away'>('home');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<MatchEvent | null>(null);
   const [eventToDeleteId, setEventToDeleteId] = useState<string | null>(null);
+
+  // Admin comments states
+  const [newCommentText, setNewCommentText] = useState('');
+  const [newCommentPhase, setNewCommentPhase] = useState<'before' | 'during' | 'after'>('before');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [editingCommentPhase, setEditingCommentPhase] = useState<'before' | 'during' | 'after'>('before');
 
   const handleSquadToggle = async (playerId: string, teamType: 'home' | 'away') => {
     if (!match || !id) return;
@@ -288,6 +295,74 @@ export function AdminMatch() {
     }
   };
 
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !match || !newCommentText.trim()) return;
+
+    const newComment: AdminComment = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9),
+      text: newCommentText.trim(),
+      createdAt: Date.now(),
+      phase: newCommentPhase
+    };
+
+    const currentComments = match.adminComments || [];
+    try {
+      await updateDoc(doc(db, 'matches', id), {
+        adminComments: [...currentComments, newComment]
+      });
+      setNewCommentText('');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
+    }
+  };
+
+  const handleStartEditComment = (comment: AdminComment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.text);
+    setEditingCommentPhase(comment.phase);
+  };
+
+  const handleSaveComment = async (commentId: string) => {
+    if (!id || !match || !editingCommentText.trim()) return;
+
+    const currentComments = match.adminComments || [];
+    const updatedComments = currentComments.map(c => {
+      if (c.id === commentId) {
+        return {
+          ...c,
+          text: editingCommentText.trim(),
+          phase: editingCommentPhase
+        };
+      }
+      return c;
+    });
+
+    try {
+      await updateDoc(doc(db, 'matches', id), {
+        adminComments: updatedComments
+      });
+      setEditingCommentId(null);
+      setEditingCommentText('');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!id || !match) return;
+    const currentComments = match.adminComments || [];
+    const updatedComments = currentComments.filter(c => c.id !== commentId);
+
+    try {
+      await updateDoc(doc(db, 'matches', id), {
+        adminComments: updatedComments
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Henter kamp...</div>;
   if (!match) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Kamp ikke fundet.</div>;
 
@@ -332,13 +407,14 @@ export function AdminMatch() {
           <div className="text-2xl font-bold italic tracking-tighter uppercase">Kampstyring</div>
           <div className="text-xs text-emerald-400 mt-1 font-bold pr-4 truncate">{match.homeTeam.name} vs {match.awayTeam.name}</div>
           
-          <div className="flex gap-2 mt-4">
-             <button onClick={() => setActiveTab('events')} className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors ${activeTab === 'events' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Hændelser</button>
-             <button onClick={() => setActiveTab('squad')} className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors ${activeTab === 'squad' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Holdopstilling</button>
+          <div className="flex gap-1.5 mt-4">
+             <button onClick={() => setActiveTab('events')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'events' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Hændelser</button>
+             <button onClick={() => setActiveTab('squad')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'squad' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Opstilling</button>
+             <button onClick={() => setActiveTab('notes')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'notes' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Noter</button>
           </div>
         </div>
         
-        {activeTab === 'events' ? (
+        {activeTab === 'events' && (
           <>
             {match.status === 'finished' && (
               <div className="bg-emerald-500 text-white p-4 text-center shadow-inner relative z-10">
@@ -373,7 +449,9 @@ export function AdminMatch() {
               </div>
             </div>
           </>
-        ) : (
+        )}
+
+        {activeTab === 'squad' && (
           <div className="flex-1 overflow-y-auto w-full bg-slate-50 p-4">
             <div className="flex gap-2 mb-4 bg-slate-200 p-1 rounded-xl">
               <button 
@@ -426,6 +504,145 @@ export function AdminMatch() {
                 );
               })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'notes' && (
+          <div className="flex-1 overflow-y-auto w-full bg-slate-50 p-4 flex flex-col gap-4">
+            {/* Opret kommentar form */}
+            <form onSubmit={handleAddComment} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Tilføj kampnote / kommentar</h3>
+              
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Timing</label>
+                <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                  {(['before', 'during', 'after'] as const).map(phase => (
+                    <button
+                      key={phase}
+                      type="button"
+                      onClick={() => setNewCommentPhase(phase)}
+                      className={`py-1.5 text-xs font-bold rounded-lg transition-colors capitalize ${newCommentPhase === phase ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      {phase === 'before' ? 'Før kamp' : phase === 'during' ? 'Under' : 'Efter'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kommentar</label>
+                <textarea
+                  required
+                  value={newCommentText}
+                  onChange={e => setNewCommentText(e.target.value)}
+                  placeholder="Skriv om ting uden for banen (f.eks. vejr, tilskuere, taktik...)"
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold text-slate-800 focus:border-emerald-500 focus:bg-white outline-none resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm"
+              >
+                Tilføj Note
+              </button>
+            </form>
+
+            {/* Liste af eksisterende kommentarer */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Gemte noter</h3>
+              
+              {!match.adminComments || match.adminComments.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 border-dashed p-6 text-center space-y-2">
+                  <BookOpen className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Ingen noter endnu</p>
+                  <p className="text-xs text-slate-400">Kampnoter vises også for tilskuere før, under og efter kampen.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {[...match.adminComments].sort((a, b) => b.createdAt - a.createdAt).map(comment => {
+                    const isEditing = editingCommentId === comment.id;
+                    const phaseLabels = { before: 'Før kampen', during: 'Under kampen', after: 'Efter kampen' };
+                    const phaseColors = { 
+                      before: 'bg-sky-50 text-sky-700 border-sky-100', 
+                      during: 'bg-emerald-50 text-emerald-700 border-emerald-100', 
+                      after: 'bg-slate-100 text-slate-700 border-slate-200' 
+                    };
+
+                    return (
+                      <div key={comment.id} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-2 relative">
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                              {(['before', 'during', 'after'] as const).map(phase => (
+                                <button
+                                  key={phase}
+                                  type="button"
+                                  onClick={() => setEditingCommentPhase(phase)}
+                                  className={`py-1 text-xs font-bold rounded-lg transition-colors capitalize ${editingCommentPhase === phase ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                                >
+                                  {phase === 'before' ? 'Før kamp' : phase === 'during' ? 'Under' : 'Efter'}
+                                </button>
+                              ))}
+                            </div>
+                            <textarea
+                              value={editingCommentText}
+                              onChange={e => setEditingCommentText(e.target.value)}
+                              rows={2}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm font-semibold text-slate-800 focus:border-emerald-500 focus:bg-white outline-none resize-none"
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => setEditingCommentId(null)}
+                                className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                              >
+                                <X className="w-3.5 h-3.5" /> Annuller
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveComment(comment.id)}
+                                className="p-1 px-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Gem
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-start gap-2">
+                              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${phaseColors[comment.phase]}`}>
+                                {phaseLabels[comment.phase]}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleStartEditComment(comment)}
+                                  className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-slate-50 rounded transition-colors"
+                                  title="Rediger"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-slate-50 rounded transition-colors"
+                                  title="Slet"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-xs font-semibold text-slate-700 whitespace-pre-line leading-relaxed">
+                              {comment.text}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

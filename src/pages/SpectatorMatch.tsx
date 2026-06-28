@@ -137,6 +137,36 @@ export function SpectatorMatch() {
         
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           <MatchStats match={match} events={events} />
+
+          {match.adminComments && match.adminComments.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest text-center">Kampnoter</h3>
+              <div className="space-y-2">
+                {[...match.adminComments].sort((a, b) => b.createdAt - a.createdAt).map(comment => {
+                  const phaseLabels = { before: 'Før kampen', during: 'Under kampen', after: 'Efter kampen' };
+                  const phaseColors = { 
+                    before: 'bg-sky-50 text-sky-700 border-sky-100', 
+                    during: 'bg-emerald-50 text-emerald-700 border-emerald-100', 
+                    after: 'bg-slate-100 text-slate-700 border-slate-200' 
+                  };
+
+                  return (
+                    <div key={comment.id} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-1.5">
+                      <div className="flex items-center">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${phaseColors[comment.phase]}`}>
+                          {phaseLabels[comment.phase]}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700 whitespace-pre-line leading-relaxed">
+                        {comment.text}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mt-8 mb-4 text-center">Hændelser</h3>
           <MatchTimeline match={match} events={events} players={players} />
         </div>

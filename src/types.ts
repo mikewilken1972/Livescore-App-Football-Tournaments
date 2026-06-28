@@ -47,6 +47,13 @@ export type MatchEvent = {
   imageUrl?: string;
 };
 
+export type AdminComment = {
+  id: string;
+  text: string;
+  createdAt: number;
+  phase: 'before' | 'during' | 'after';
+};
+
 export type Match = {
   id: string;
   tournamentName: string;
@@ -64,4 +71,5 @@ export type Match = {
   homeSquad?: string[];
   awaySquad?: string[];
   maxSquadSize?: number;
+  adminComments?: AdminComment[];
 };
