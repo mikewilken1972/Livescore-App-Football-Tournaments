@@ -22,7 +22,9 @@ export function MatchHeader({ match }: MatchHeaderProps) {
         </div>
         
         <div className="bg-white/20 rounded-lg px-4 py-2 mx-4 text-center">
-          <div className="text-4xl font-black tabular-nums whitespace-nowrap">{match.homeScore} - {match.awayScore}</div>
+          <div className="text-4xl font-black tabular-nums whitespace-nowrap">
+            {match.status === 'scheduled' ? ' - ' : `${match.homeScore} - ${match.awayScore}`}
+          </div>
         </div>
         
         <div className="text-center flex-1">
@@ -48,6 +50,16 @@ export function MatchHeader({ match }: MatchHeaderProps) {
            <LiveMatchTimer match={match} />
         </span>
       </div>
+
+      {match.notes && (
+        <div className="mt-6 flex justify-center max-w-sm mx-auto">
+          <div className="bg-white/10 border border-white/20 px-4 py-2 rounded-xl w-full text-center">
+            <p className="text-[11px] font-semibold italic opacity-90 leading-tight">
+              "{match.notes}"
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

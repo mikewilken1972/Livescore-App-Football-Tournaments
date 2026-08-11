@@ -34,6 +34,8 @@ export function AdminMatch() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [editingCommentPhase, setEditingCommentPhase] = useState<'before' | 'during' | 'after'>('before');
+  const [isEditingMatchNote, setIsEditingMatchNote] = useState(false);
+  const [editMatchNoteValue, setEditMatchNoteValue] = useState('');
 
   const handleSquadToggle = async (playerId: string, teamType: 'home' | 'away') => {
     if (!match || !id) return;
@@ -372,6 +374,18 @@ export function AdminMatch() {
     }
   };
 
+  const handleSaveMatchNote = async () => {
+    if (!id) return;
+    try {
+      await updateDoc(doc(db, 'matches', id), {
+        notes: editMatchNoteValue
+      });
+      setIsEditingMatchNote(false);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `matches/${id}`);
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Henter kamp...</div>;
   if (!match) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Kamp ikke fundet.</div>;
 
@@ -411,7 +425,7 @@ export function AdminMatch() {
                 )}
               </div>
               <div className="text-xl font-black bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-600/50">
-                {match.homeScore} - {match.awayScore}
+                {match.status === 'scheduled' ? ' - ' : `${match.homeScore} - ${match.awayScore}`}
               </div>
             </div>
             <div className="text-2xl font-bold italic tracking-tighter uppercase">Kampstyring</div>
@@ -511,6 +525,42 @@ export function AdminMatch() {
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="bg-slate-800 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Kampnoter</div>
                 <div className="p-4 space-y-4">
+                  {/* Main Match Note */}
+                  <div className="space-y-2 border-b border-slate-100 pb-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold uppercase tracking-tight text-slate-400">Hovednote</span>
+                      {!isEditingMatchNote ? (
+                        <button 
+                          onClick={() => {
+                            setIsEditingMatchNote(true);
+                            setEditMatchNoteValue(match.notes || '');
+                          }}
+                          className="text-slate-400 hover:text-emerald-500 p-1 transition-colors"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <div className="flex gap-1">
+                          <button onClick={() => setIsEditingMatchNote(false)} className="text-slate-400 hover:text-red-500 p-1"><X className="w-3 h-3" /></button>
+                          <button onClick={handleSaveMatchNote} className="text-emerald-500 hover:text-emerald-600 p-1"><Check className="w-3 h-3" /></button>
+                        </div>
+                      )}
+                    </div>
+                    {isEditingMatchNote ? (
+                      <textarea 
+                        value={editMatchNoteValue}
+                        onChange={e => setEditMatchNoteValue(e.target.value)}
+                        className="w-full bg-slate-50 border border-emerald-200 rounded-lg p-2 text-[11px] font-semibold outline-none resize-none"
+                        rows={2}
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="text-[11px] font-semibold text-slate-600 italic">
+                        {match.notes || 'Ingen hovednote...'}
+                      </p>
+                    )}
+                  </div>
+
                   <form onSubmit={handleAddComment} className="space-y-2">
                     <textarea 
                       value={newCommentText}
@@ -630,8 +680,58 @@ export function AdminMatch() {
 
             {activeTab === 'notes' && (
               <div className="flex-1 overflow-y-auto w-full bg-slate-50 p-4 flex flex-col gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Kampnote (Hovednote)</h3>
+                    {!isEditingMatchNote && (
+                      <button 
+                        onClick={() => {
+                          setIsEditingMatchNote(true);
+                          setEditMatchNoteValue(match.notes || '');
+                        }}
+                        className="text-emerald-600 hover:text-emerald-700 p-1"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {isEditingMatchNote ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={editMatchNoteValue}
+                        onChange={e => setEditMatchNoteValue(e.target.value)}
+                        placeholder="Skriv hovednote for kampen (f.eks. bane, dommer...)"
+                        rows={3}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-500"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setIsEditingMatchNote(false)}
+                          className="flex-1 py-2 bg-slate-100 text-slate-600 font-bold text-[10px] uppercase tracking-widest rounded-lg"
+                        >
+                          Annuller
+                        </button>
+                        <button 
+                          onClick={handleSaveMatchNote}
+                          className="flex-1 py-2 bg-emerald-500 text-white font-bold text-[10px] uppercase tracking-widest rounded-lg"
+                        >
+                          Gem
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 italic min-h-[40px] flex items-center">
+                      <p className="text-sm font-semibold text-slate-700 leading-relaxed">
+                        {match.notes || <span className="text-slate-400 font-normal">Ingen hovednote tilføjet endnu.</span>}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <form onSubmit={handleAddComment} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Tilføj kampnote</h3>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Tilføj hurtig note</h3>
                   <textarea
                     required
                     value={newCommentText}

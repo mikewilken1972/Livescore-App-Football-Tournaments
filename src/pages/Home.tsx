@@ -23,7 +23,7 @@ function MatchCard({ match, ...props }: { match: Match; key?: React.Key }) {
           {match.homeTeam.name}
         </div>
         <div className="bg-slate-100 px-3 py-1.5 rounded-lg text-lg font-black tabular-nums tracking-tighter whitespace-nowrap">
-          {match.homeScore} - {match.awayScore}
+          {match.status === 'scheduled' ? ' - ' : `${match.homeScore} - ${match.awayScore}`}
         </div>
         <div className="flex-1 font-bold text-slate-800 text-right truncate pl-2">
           {match.awayTeam.name}
@@ -44,6 +44,13 @@ function MatchCard({ match, ...props }: { match: Match; key?: React.Key }) {
           Følg kampen →
         </div>
       </div>
+      {match.notes && (
+        <div className="mt-3 bg-emerald-50/50 p-2 rounded-lg border border-emerald-100/50">
+          <p className="text-[10px] font-bold text-emerald-700 italic leading-tight">
+            {match.notes}
+          </p>
+        </div>
+      )}
     </Link>
   );
 }

@@ -37,6 +37,7 @@ export function AdminManagement() {
   const [newMatchAway, setNewMatchAway] = useState('');
   const [newMatchHalfDuration, setNewMatchHalfDuration] = useState('20');
   const [newMatchStartTime, setNewMatchStartTime] = useState('');
+  const [newMatchNotes, setNewMatchNotes] = useState('');
 
   // Edit states
   const [editingTournamentId, setEditingTournamentId] = useState<string | null>(null);
@@ -55,9 +56,12 @@ export function AdminManagement() {
 
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
   const [editMatchTourName, setEditMatchTourName] = useState('');
+  const [editMatchHomeName, setEditMatchHomeName] = useState('');
+  const [editMatchAwayName, setEditMatchAwayName] = useState('');
   const [editMatchHalfDuration, setEditMatchHalfDuration] = useState('');
   const [editMatchStartTime, setEditMatchStartTime] = useState('');
   const [editMatchIsHidden, setEditMatchIsHidden] = useState(false);
+  const [editMatchNotes, setEditMatchNotes] = useState('');
   const [newMatchIsHidden, setNewMatchIsHidden] = useState(false);
 
   const toggleMatchVisibility = async (matchId: string, currentIsHidden: boolean) => {
@@ -260,6 +264,7 @@ export function AdminManagement() {
         maxSquadSize: 17,
         ownerId: auth.currentUser.uid,
         isHidden: newMatchIsHidden,
+        notes: newMatchNotes,
         statusUpdatedAt: Date.now()
       };
 
@@ -269,6 +274,7 @@ export function AdminManagement() {
       setNewMatchHome('');
       setNewMatchAway('');
       setNewMatchStartTime('');
+      setNewMatchNotes('');
       setNewMatchIsHidden(false);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'matches');
@@ -688,12 +694,21 @@ export function AdminManagement() {
                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 truncate">Halvleg (min)</label>
                    <input 
                      type="number" 
-                     placeholder="20" 
+                     placeholder="Halvleg (min)" 
                      className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-sm sm:text-base text-slate-800 font-bold outline-none focus:border-emerald-500"
                      value={newMatchHalfDuration}
                      onChange={e => setNewMatchHalfDuration(e.target.value)}
                    />
                  </div>
+               </div>
+               <div className="w-full">
+                 <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 truncate">Note (Valgfri)</label>
+                 <textarea 
+                   placeholder="F.eks. Bane 4, Turneringsdetaljer..." 
+                   className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-sm text-slate-800 font-bold outline-none focus:border-emerald-500 min-h-[80px] resize-none"
+                   value={newMatchNotes}
+                   onChange={e => setNewMatchNotes(e.target.value)}
+                 />
                </div>
                 <label className="flex items-center gap-2 text-xs font-bold text-slate-600 select-none pb-2 cursor-pointer">
                   <input 
@@ -713,20 +728,44 @@ export function AdminManagement() {
             
             {matches.filter(m => m.status !== 'finished').sort((a,b) => (a.startTime || Number.MAX_SAFE_INTEGER) - (b.startTime || Number.MAX_SAFE_INTEGER)).map(m => (
               editingMatchId === m.id ? (
-                <form key={m.id} onSubmit={(e) => {
+                <form key={m.id} onSubmit={async (e) => {
                   e.preventDefault();
-                  updateDoc(doc(db, 'matches', m.id), { 
+                  
+                  // Keep current objects but update names
+                  const updatedHomeTeam = { ...m.homeTeam, name: editMatchHomeName };
+                  const updatedAwayTeam = { ...m.awayTeam, name: editMatchAwayName };
+
+                  await updateDoc(doc(db, 'matches', m.id), { 
                     tournamentName: editMatchTourName, 
+                    homeTeam: updatedHomeTeam,
+                    awayTeam: updatedAwayTeam,
                     halfDuration: parseInt(editMatchHalfDuration) || 20,
                     startTime: editMatchStartTime ? new Date(editMatchStartTime).getTime() : 0, 
-                    isHidden: editMatchIsHidden
+                    isHidden: editMatchIsHidden,
+                    notes: editMatchNotes
                   });
                   setEditingMatchId(null);
                 }} className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-sm border border-emerald-500">
                     <input autoFocus className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500" placeholder="Turnering navn" value={editMatchTourName} onChange={e => setEditMatchTourName(e.target.value)} />
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Hjemmehold</label>
+                        <input className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500" placeholder="Hjemmehold" value={editMatchHomeName} onChange={e => setEditMatchHomeName(e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Udehold</label>
+                        <input className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold outline-none focus:border-emerald-500" placeholder="Udehold" value={editMatchAwayName} onChange={e => setEditMatchAwayName(e.target.value)} />
+                      </div>
+                    </div>
+
                     <div className="flex flex-col sm:flex-row gap-2">
                        <input type="datetime-local" className="w-full sm:flex-[2] bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-emerald-500" value={editMatchStartTime} onChange={e => setEditMatchStartTime(e.target.value)} />
                        <input type="number" className="w-full sm:flex-1 bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-emerald-500" placeholder="Min/halv" value={editMatchHalfDuration} onChange={e => setEditMatchHalfDuration(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Note</label>
+                      <textarea className="w-full bg-slate-50 border-2 border-slate-200 p-2 rounded-lg font-bold text-sm outline-none focus:border-emerald-500 min-h-[60px] resize-none" placeholder="Note" value={editMatchNotes} onChange={e => setEditMatchNotes(e.target.value)} />
                     </div>
                     <label className="flex items-center gap-2 text-xs font-bold text-slate-600 select-none mt-1">
                       <input 
@@ -755,8 +794,11 @@ export function AdminManagement() {
                       e.preventDefault(); 
                       setEditingMatchId(m.id); 
                       setEditMatchTourName(m.tournamentName); 
+                      setEditMatchHomeName(m.homeTeam.name);
+                      setEditMatchAwayName(m.awayTeam.name);
                       setEditMatchHalfDuration(String(m.halfDuration)); 
                       setEditMatchIsHidden(!!m.isHidden);
+                      setEditMatchNotes(m.notes || '');
                       if (m.startTime) {
                         const tzOffset = (new Date()).getTimezoneOffset() * 60000;
                         const localISOTime = (new Date(m.startTime - tzOffset)).toISOString().slice(0, 16);

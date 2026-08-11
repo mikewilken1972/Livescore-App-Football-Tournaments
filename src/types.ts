@@ -74,4 +74,5 @@ export type Match = {
   maxSquadSize?: number;
   adminComments?: AdminComment[];
   isHidden?: boolean;
+  notes?: string;
 };
