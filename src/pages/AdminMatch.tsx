@@ -384,60 +384,73 @@ export function AdminMatch() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto w-full max-w-sm mx-auto bg-slate-50 md:shadow-2xl md:my-4 md:rounded-[40px] md:border-[12px] md:border-slate-800 flex flex-col relative overflow-hidden">
+      <div className="flex-1 overflow-y-auto w-full bg-slate-50 flex flex-col relative">
         <div className="bg-slate-800 p-6 pt-10 text-white flex-shrink-0 relative">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              {match.status === 'finished' ? (
-                 <>
-                   <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Afsluttet</span>
-                 </>
-              ) : (
-                 <>
-                   <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                   <span className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Reporter Mode</span>
-                 </>
-              )}
+          <div className="max-w-7xl mx-auto w-full">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {match.status === 'finished' ? (
+                   <>
+                     <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Afsluttet</span>
+                   </>
+                ) : (
+                   <>
+                     <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                     <span className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Reporter Mode</span>
+                   </>
+                )}
+              </div>
+              <div className="text-xl font-black bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-600/50">
+                {match.homeScore} - {match.awayScore}
+              </div>
             </div>
-            <div className="text-xl font-black bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-600/50">
-              {match.homeScore} - {match.awayScore}
+            <div className="text-2xl font-bold italic tracking-tighter uppercase">Kampstyring</div>
+            <div className="text-xs text-emerald-400 mt-1 font-bold pr-4 truncate">{match.homeTeam.name} vs {match.awayTeam.name}</div>
+            
+            <div className="flex gap-1.5 mt-4 lg:hidden">
+               <button onClick={() => setActiveTab('events')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'events' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Hændelser</button>
+               <button onClick={() => setActiveTab('squad')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'squad' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Opstilling</button>
+               <button onClick={() => setActiveTab('notes')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'notes' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Noter</button>
             </div>
-          </div>
-          <div className="text-2xl font-bold italic tracking-tighter uppercase">Kampstyring</div>
-          <div className="text-xs text-emerald-400 mt-1 font-bold pr-4 truncate">{match.homeTeam.name} vs {match.awayTeam.name}</div>
-          
-          <div className="flex gap-1.5 mt-4">
-             <button onClick={() => setActiveTab('events')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'events' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Hændelser</button>
-             <button onClick={() => setActiveTab('squad')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'squad' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Opstilling</button>
-             <button onClick={() => setActiveTab('notes')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-600 transition-colors whitespace-nowrap ${activeTab === 'notes' ? 'bg-white text-slate-800' : 'bg-slate-700/50 text-slate-300'}`}>Noter</button>
           </div>
         </div>
         
-        {activeTab === 'events' && (
-          <>
-            {match.status === 'finished' && (
-              <div className="bg-emerald-500 text-white p-4 text-center shadow-inner relative z-10">
-                 <div className="text-base font-black uppercase tracking-widest">
-                    Kampen er afsluttet
-                 </div>
-                 <div className="text-[10px] uppercase font-bold opacity-80 mt-1">Officielt resultat registreret</div>
+        <div className="max-w-7xl mx-auto w-full p-4 lg:p-6">
+          {/* Desktop Layout */}
+          <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6 items-start">
+            {/* Left: Controls & Stats */}
+            <div className="lg:col-span-4 space-y-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-slate-800 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Match Kontrol</div>
+                <EventMenu 
+                  match={match} 
+                  players={players} 
+                  onAddEvent={handleAddEvent} 
+                  onUpdateStatus={handleUpdateStatus} 
+                  onTogglePause={handleTogglePause}
+                  onReset={handleReset} 
+                  currentMinute={elapsedSeconds}
+                />
               </div>
-            )}
-            
-            <div className="flex-1 overflow-y-auto w-full flex flex-col">
-              <EventMenu 
-                match={match} 
-                players={players} 
-                onAddEvent={handleAddEvent} 
-                onUpdateStatus={handleUpdateStatus} 
-                onTogglePause={handleTogglePause}
-                onReset={handleReset} 
-                currentMinute={elapsedSeconds}
-              />
-              <div className="border-t-4 border-slate-200 bg-slate-50 px-4 pb-4 overflow-y-auto max-h-[500px]">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <MatchStats match={match} events={events} />
-                <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mt-8 mb-4 text-center">Hændelser</h3>
+              </div>
+            </div>
+
+            {/* Middle: Timeline */}
+            <div className="lg:col-span-5 space-y-4">
+              {match.status === 'finished' && (
+                <div className="bg-emerald-500 text-white p-4 rounded-2xl text-center shadow-lg relative z-10 mb-6">
+                   <div className="text-lg font-black uppercase tracking-widest">Kampen er afsluttet</div>
+                   <div className="text-[10px] uppercase font-bold opacity-80 mt-1">Officielt resultat registreret</div>
+                </div>
+              )}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Hændelsesforløb
+                </h3>
                 <MatchTimeline 
                   match={match} 
                   events={events} 
@@ -448,204 +461,192 @@ export function AdminMatch() {
                 />
               </div>
             </div>
-          </>
-        )}
 
-        {activeTab === 'squad' && (
-          <div className="flex-1 overflow-y-auto w-full bg-slate-50 p-4">
-            <div className="flex gap-2 mb-4 bg-slate-200 p-1 rounded-xl">
-              <button 
-                onClick={() => setSquadTeamTab('home')}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm ${squadTeamTab === 'home' ? 'bg-white shadow' : 'text-slate-500'}`}
-              >
-                {match.homeTeam.shortName || 'Hjemme'}
-              </button>
-              <button 
-                onClick={() => setSquadTeamTab('away')}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm ${squadTeamTab === 'away' ? 'bg-white shadow' : 'text-slate-500'}`}
-              >
-                {match.awayTeam.shortName || 'Ude'}
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Maks spillere:</span>
-                  <input 
-                    type="number" 
-                    min="1"
-                    max="99"
-                    value={match.maxSquadSize || 17}
-                    onChange={handleMaxSquadSizeChange}
-                    className="w-16 px-2 py-1 bg-slate-100 border border-slate-300 rounded font-bold text-center text-sm"
-                  />
-                </div>
-                <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 bg-emerald-100 px-2 py-1 rounded">
-                  Valgt: {match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad']?.length || 0} / {match.maxSquadSize || 17}
-                </span>
-              </div>
-              <div className="space-y-2">
-              {players.map(p => {
-                const isSelected = (match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad'] || []).includes(p.id);
-                return (
-                  <div 
-                    key={p.id} 
-                    onClick={() => handleSquadToggle(p.id, squadTeamTab)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
-                  >
-                    <div className={`w-6 h-6 flex items-center justify-center rounded-md border-2 ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'}`}>
-                      {isSelected && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                    </div>
-                    <div className="font-bold text-slate-800 flex-1">
-                       #{p.number} {p.name}
-                    </div>
+            {/* Right: Squad & Notes */}
+            <div className="lg:col-span-3 space-y-6">
+              {/* Squad Management */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-slate-800 px-4 py-2 flex justify-between items-center">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Holdopstilling</div>
+                  <div className="flex gap-1">
+                    <button onClick={() => setSquadTeamTab('home')} className={`px-2 py-1 text-[9px] font-bold rounded ${squadTeamTab === 'home' ? 'bg-white text-slate-800' : 'text-slate-400 hover:text-white'}`}>{match.homeTeam.shortName}</button>
+                    <button onClick={() => setSquadTeamTab('away')} className={`px-2 py-1 text-[9px] font-bold rounded ${squadTeamTab === 'away' ? 'bg-white text-slate-800' : 'text-slate-400 hover:text-white'}`}>{match.awayTeam.shortName}</button>
                   </div>
-                );
-              })}
+                </div>
+                <div className="p-4 max-h-[400px] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4 text-[10px] font-bold text-slate-400 uppercase">
+                    <span>Maks: {match.maxSquadSize || 17}</span>
+                    <span className="text-emerald-600">Valgt: {match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad']?.length || 0}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {players.filter(p => p.teamIds?.includes(squadTeamTab === 'home' ? match.homeTeam.id : match.awayTeam.id)).map(p => {
+                      const isSelected = (match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad'] || []).includes(p.id);
+                      return (
+                        <div 
+                          key={p.id} 
+                          onClick={() => handleSquadToggle(p.id, squadTeamTab)}
+                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors text-xs font-bold ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <div className={`w-4 h-4 flex-shrink-0 flex items-center justify-center rounded border ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'}`}>
+                            {isSelected && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                          <span className="truncate">#{p.number} {p.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-slate-800 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Kampnoter</div>
+                <div className="p-4 space-y-4">
+                  <form onSubmit={handleAddComment} className="space-y-2">
+                    <textarea 
+                      value={newCommentText}
+                      onChange={e => setNewCommentText(e.target.value)}
+                      placeholder="Tilføj hurtig note..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-semibold outline-none focus:border-emerald-500 resize-none"
+                      rows={2}
+                    />
+                    <button type="submit" className="w-full py-2 bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg">Gem Note</button>
+                  </form>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {(match.adminComments || []).map(comment => (
+                      <div key={comment.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 relative group">
+                        <p className="text-[11px] font-semibold text-slate-700 leading-relaxed">{comment.text}</p>
+                        <button onClick={() => handleDeleteComment(comment.id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        )}
 
-        {activeTab === 'notes' && (
-          <div className="flex-1 overflow-y-auto w-full bg-slate-50 p-4 flex flex-col gap-4">
-            {/* Opret kommentar form */}
-            <form onSubmit={handleAddComment} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Tilføj kampnote / kommentar</h3>
-              
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Timing</label>
-                <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
-                  {(['before', 'during', 'after'] as const).map(phase => (
-                    <button
-                      key={phase}
-                      type="button"
-                      onClick={() => setNewCommentPhase(phase)}
-                      className={`py-1.5 text-xs font-bold rounded-lg transition-colors capitalize ${newCommentPhase === phase ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                    >
-                      {phase === 'before' ? 'Før kamp' : phase === 'during' ? 'Under' : 'Efter'}
-                    </button>
-                  ))}
+          {/* Mobile Layout (Tabs) */}
+          <div className="lg:hidden">
+            {activeTab === 'events' && (
+              <>
+                {match.status === 'finished' && (
+                  <div className="bg-emerald-500 text-white p-4 text-center shadow-inner relative z-10">
+                     <div className="text-base font-black uppercase tracking-widest">Kampen er afsluttet</div>
+                     <div className="text-[10px] uppercase font-bold opacity-80 mt-1">Officielt resultat registreret</div>
+                  </div>
+                )}
+                
+                <div className="flex-1 overflow-y-auto w-full flex flex-col">
+                  <EventMenu 
+                    match={match} 
+                    players={players} 
+                    onAddEvent={handleAddEvent} 
+                    onUpdateStatus={handleUpdateStatus} 
+                    onTogglePause={handleTogglePause}
+                    onReset={handleReset} 
+                    currentMinute={elapsedSeconds}
+                  />
+                  <div className="border-t-4 border-slate-200 bg-slate-50 px-4 pb-4 overflow-y-auto max-h-[500px]">
+                    <MatchStats match={match} events={events} />
+                    <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mt-8 mb-4 text-center">Hændelser</h3>
+                    <MatchTimeline 
+                      match={match} 
+                      events={events} 
+                      players={players} 
+                      isAdmin={true}
+                      onEditEvent={setEditingEvent}
+                      onDeleteEvent={setEventToDeleteId}
+                    />
+                  </div>
                 </div>
-              </div>
+              </>
+            )}
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kommentar</label>
-                <textarea
-                  required
-                  value={newCommentText}
-                  onChange={e => setNewCommentText(e.target.value)}
-                  placeholder="Skriv om ting uden for banen (f.eks. vejr, tilskuere, taktik...)"
-                  rows={3}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold text-slate-800 focus:border-emerald-500 focus:bg-white outline-none resize-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm"
-              >
-                Tilføj Note
-              </button>
-            </form>
-
-            {/* Liste af eksisterende kommentarer */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Gemte noter</h3>
-              
-              {!match.adminComments || match.adminComments.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-200 border-dashed p-6 text-center space-y-2">
-                  <BookOpen className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Ingen noter endnu</p>
-                  <p className="text-xs text-slate-400">Kampnoter vises også for tilskuere før, under og efter kampen.</p>
+            {activeTab === 'squad' && (
+              <div className="flex-1 overflow-y-auto w-full bg-slate-50 p-4">
+                <div className="flex gap-2 mb-4 bg-slate-200 p-1 rounded-xl">
+                  <button 
+                    onClick={() => setSquadTeamTab('home')}
+                    className={`flex-1 py-2 rounded-lg font-bold text-sm ${squadTeamTab === 'home' ? 'bg-white shadow' : 'text-slate-500'}`}
+                  >
+                    {match.homeTeam.shortName || 'Hjemme'}
+                  </button>
+                  <button 
+                    onClick={() => setSquadTeamTab('away')}
+                    className={`flex-1 py-2 rounded-lg font-bold text-sm ${squadTeamTab === 'away' ? 'bg-white shadow' : 'text-slate-500'}`}
+                  >
+                    {match.awayTeam.shortName || 'Ude'}
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {[...match.adminComments].sort((a, b) => b.createdAt - a.createdAt).map(comment => {
-                    const isEditing = editingCommentId === comment.id;
-                    const phaseLabels = { before: 'Før kampen', during: 'Under kampen', after: 'Efter kampen' };
-                    const phaseColors = { 
-                      before: 'bg-sky-50 text-sky-700 border-sky-100', 
-                      during: 'bg-emerald-50 text-emerald-700 border-emerald-100', 
-                      after: 'bg-slate-100 text-slate-700 border-slate-200' 
-                    };
-
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Maks spillere:</span>
+                      <input 
+                        type="number" 
+                        min="1"
+                        max="99"
+                        value={match.maxSquadSize || 17}
+                        onChange={handleMaxSquadSizeChange}
+                        className="w-16 px-2 py-1 bg-slate-100 border border-slate-300 rounded font-bold text-center text-sm"
+                      />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 bg-emerald-100 px-2 py-1 rounded">
+                      Valgt: {match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad']?.length || 0} / {match.maxSquadSize || 17}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                  {players.filter(p => p.teamIds?.includes(squadTeamTab === 'home' ? match.homeTeam.id : match.awayTeam.id)).map(p => {
+                    const isSelected = (match[squadTeamTab === 'home' ? 'homeSquad' : 'awaySquad'] || []).includes(p.id);
                     return (
-                      <div key={comment.id} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-2 relative">
-                        {isEditing ? (
-                          <div className="space-y-3">
-                            <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
-                              {(['before', 'during', 'after'] as const).map(phase => (
-                                <button
-                                  key={phase}
-                                  type="button"
-                                  onClick={() => setEditingCommentPhase(phase)}
-                                  className={`py-1 text-xs font-bold rounded-lg transition-colors capitalize ${editingCommentPhase === phase ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                                >
-                                  {phase === 'before' ? 'Før kamp' : phase === 'during' ? 'Under' : 'Efter'}
-                                </button>
-                              ))}
-                            </div>
-                            <textarea
-                              value={editingCommentText}
-                              onChange={e => setEditingCommentText(e.target.value)}
-                              rows={2}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm font-semibold text-slate-800 focus:border-emerald-500 focus:bg-white outline-none resize-none"
-                            />
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                type="button"
-                                onClick={() => setEditingCommentId(null)}
-                                className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
-                              >
-                                <X className="w-3.5 h-3.5" /> Annuller
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveComment(comment.id)}
-                                className="p-1 px-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
-                              >
-                                <Check className="w-3.5 h-3.5" /> Gem
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex justify-between items-start gap-2">
-                              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${phaseColors[comment.phase]}`}>
-                                {phaseLabels[comment.phase]}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => handleStartEditComment(comment)}
-                                  className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-slate-50 rounded transition-colors"
-                                  title="Rediger"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteComment(comment.id)}
-                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-slate-50 rounded transition-colors"
-                                  title="Slet"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                            <p className="text-xs font-semibold text-slate-700 whitespace-pre-line leading-relaxed">
-                              {comment.text}
-                            </p>
-                          </>
-                        )}
+                      <div 
+                        key={p.id} 
+                        onClick={() => handleSquadToggle(p.id, squadTeamTab)}
+                        className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                      >
+                        <div className={`w-6 h-6 flex items-center justify-center rounded-md border-2 ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'}`}>
+                          {isSelected && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        <div className="font-bold text-slate-800 flex-1 text-sm">
+                           #{p.number} {p.name}
+                        </div>
                       </div>
                     );
                   })}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {activeTab === 'notes' && (
+              <div className="flex-1 overflow-y-auto w-full bg-slate-50 p-4 flex flex-col gap-4">
+                <form onSubmit={handleAddComment} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Tilføj kampnote</h3>
+                  <textarea
+                    required
+                    value={newCommentText}
+                    onChange={e => setNewCommentText(e.target.value)}
+                    placeholder="Skriv kommentar..."
+                    rows={3}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold text-slate-800 outline-none"
+                  />
+                  <button type="submit" className="w-full py-2.5 bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors">Gem Note</button>
+                </form>
+                <div className="space-y-2">
+                  {(match.adminComments || []).map(comment => (
+                    <div key={comment.id} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-2 relative">
+                      <div className="flex justify-end">
+                        <button onClick={() => handleDeleteComment(comment.id)} className="p-1 text-slate-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700 whitespace-pre-line leading-relaxed">{comment.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
       <ConfirmDialog
         isOpen={showResetConfirm}
@@ -657,7 +658,7 @@ export function AdminMatch() {
       <ConfirmDialog
         isOpen={eventToDeleteId !== null}
         title="Slet hændelse"
-        message="Er du sikker på at du vil slette denne hændelse? Kampens stilling vil automatisk blive genberegnet."
+        message="Er du sikker på at du vil slet denne hændelse? Kampens stilling vil automatisk blive genberegnet."
         onConfirm={handleDeleteEvent}
         onCancel={() => setEventToDeleteId(null)}
       />

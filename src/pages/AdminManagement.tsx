@@ -287,8 +287,8 @@ export function AdminManagement() {
   };
 
   return (
-    <div className="p-4 overflow-y-auto w-full">
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+    <div className="p-4 overflow-y-auto w-full max-w-7xl mx-auto">
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
         {(['matches', 'tournaments', 'teams', 'players', 'settings'] as const).map(tab => (
           <button
             key={tab}
@@ -587,7 +587,7 @@ export function AdminManagement() {
             ))}
           </div>
         </div>
-        </div>
+      </div>
       )}
 
       {activeTab === 'matches' && (
@@ -764,47 +764,62 @@ export function AdminManagement() {
             </div>
           </div>
         </div>
-        </div>
+      </div>
       )}
 
       {activeTab === 'settings' && (
-        <div className="space-y-6">
-          <div className="bg-slate-100 p-6 rounded-2xl border-2 border-slate-200">
-            <div className="flex items-center gap-3 mb-4">
-              <Shield className="w-8 h-8 text-emerald-500" />
-              <h3 className="text-xl font-black text-slate-800">Administrativ Adgang</h3>
+        <div className="grid lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-5">
+            <div className="bg-slate-100 p-6 rounded-2xl border-2 border-slate-200">
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="w-8 h-8 text-emerald-500" />
+                <h3 className="text-xl font-black text-slate-800">Administrativ Adgang</h3>
+              </div>
+              <p className="text-sm text-slate-600 mb-6">
+                Tilføj de Google-konti (Email adresser), som har tilladelse til at tilgå dette kontrolpanel. Kun mikewilken@gmail.com kan tilføje eller slette admins!
+              </p>
+              
+              <form onSubmit={handleAddAdmin} className="flex gap-2 mb-6">
+                <input 
+                  type="email" 
+                  placeholder="Indtast email-adresse" 
+                  className="flex-[3] min-w-0 bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
+                  value={newAdminEmail}
+                  onChange={e => setNewAdminEmail(e.target.value)}
+                />
+                <button type="submit" disabled={!newAdminEmail} className="flex-1 min-w-[80px] bg-emerald-500 hover:bg-emerald-600 transition-colors text-white font-bold rounded-xl disabled:opacity-50">
+                  Tilføj
+                </button>
+              </form>
             </div>
-            <p className="text-sm text-slate-600 mb-6">
-              Tilføj de Google-konti (Email adresser), som har tilladelse til at tilgå dette kontrolpanel, oprette kampe, og ændre oplysninger. Kun mikewilken@gmail.com kan tilføje eller slette admins!
-            </p>
-            
-            <form onSubmit={handleAddAdmin} className="flex gap-2 mb-6">
-              <input 
-                type="email" 
-                placeholder="Indtast email-adresse" 
-                className="flex-[3] min-w-0 bg-white border-2 border-slate-200 rounded-xl p-3 text-slate-800 font-bold outline-none focus:border-emerald-500"
-                value={newAdminEmail}
-                onChange={e => setNewAdminEmail(e.target.value)}
-              />
-              <button type="submit" disabled={!newAdminEmail} className="flex-1 min-w-[80px] bg-emerald-500 hover:bg-emerald-600 transition-colors text-white font-bold rounded-xl disabled:opacity-50">
-                Tilføj
-              </button>
-            </form>
+          </div>
 
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Godkendte Controllere</h4>
-              {allowedEmails.map(email => (
-                <div key={email} className="bg-white p-3 rounded-lg shadow-sm font-bold flex justify-between items-center group border border-slate-200">
-                  <span className={email === 'mikewilken@gmail.com' ? 'text-emerald-700' : 'text-slate-700'}>
-                    {email} {email === 'mikewilken@gmail.com' && <span className="opacity-50 text-xs ml-2">(Owner)</span>}
-                  </span>
-                  {email !== 'mikewilken@gmail.com' && (
-                    <button onClick={() => handleRemoveAdmin(email)} className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
+          <div className="lg:col-span-7">
+            <div className="bg-white p-6 rounded-2xl border-2 border-slate-100">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Godkendte Administratorer</h4>
+              <div className="space-y-3">
+                {allowedEmails.map(email => (
+                  <div key={email} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 text-xs font-bold">
+                        {email[0].toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700">{email}</span>
+                        {email === 'mikewilken@gmail.com' && <span className="text-[10px] text-emerald-600 font-bold uppercase">System Ejer</span>}
+                      </div>
+                    </div>
+                    {email !== 'mikewilken@gmail.com' && (
+                      <button 
+                        onClick={() => handleRemoveAdmin(email)}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -115,8 +115,8 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
-      <div className="max-w-3xl mx-auto pb-16">
-        <header className="mb-8 flex justify-between items-start">
+      <div className="max-w-7xl mx-auto pb-16">
+        <header className="mb-8 flex justify-between items-start max-w-3xl mx-auto lg:max-w-none">
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
               <Trophy className="text-emerald-500 w-8 h-8" />
@@ -143,11 +143,11 @@ export function Home() {
                 <Trophy className="w-4 h-4" /> Vælg Turnering
               </h2>
               {tournaments.length === 0 ? (
-                <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200 max-w-3xl mx-auto">
                   Ingen turneringer oprettet endnu
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {tournaments.map(tournamentName => (
                     <button
                       key={tournamentName}
@@ -168,7 +168,7 @@ export function Home() {
             </section>
           ) : (
             <>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 max-w-3xl mx-auto lg:max-w-none">
                 <button 
                   onClick={() => setSelectedTournament(null)}
                   className="bg-white border-2 border-slate-200 text-slate-600 hover:text-slate-800 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95"
@@ -186,11 +186,11 @@ export function Home() {
                 </h2>
                 
                 {todayMatches.length === 0 ? (
-                  <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                  <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200 max-w-3xl mx-auto lg:max-w-none">
                     Ingen kampe på programmet i dag
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {todayMatches.map(match => (
                       <MatchCard key={match.id} match={match} />
                     ))}
@@ -204,11 +204,11 @@ export function Home() {
                 </h2>
                 
                 {upcomingMatches.length === 0 ? (
-                  <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                  <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200 max-w-3xl mx-auto lg:max-w-none">
                     Ingen kommende kampe
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {upcomingMatches.map(match => (
                       <MatchCard key={match.id} match={match} />
                     ))}
@@ -222,11 +222,11 @@ export function Home() {
                 </h2>
                 
                 {finishedMatches.length === 0 ? (
-                  <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                  <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200 max-w-3xl mx-auto lg:max-w-none">
                     Ingen afsluttede kampe
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {finishedMatches.map(match => (
                       <MatchCard key={match.id} match={match} />
                     ))}

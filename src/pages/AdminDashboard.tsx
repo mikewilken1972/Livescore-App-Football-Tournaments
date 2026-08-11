@@ -82,10 +82,12 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto w-full max-w-sm mx-auto bg-slate-50 md:shadow-2xl md:my-4 md:rounded-[40px] md:border-[12px] md:border-slate-800 flex flex-col relative overflow-hidden">
+      <div className="flex-1 overflow-y-auto w-full bg-slate-50 flex flex-col relative overflow-hidden">
         <div className="bg-slate-800 p-6 pt-10 text-white flex-shrink-0">
-          <div className="text-2xl font-bold italic tracking-tighter uppercase">Kamp modul</div>
-          <div className="text-xs text-slate-400 mt-1">Opret kampe, hold og spillere før rapport start.</div>
+          <div className="max-w-7xl mx-auto w-full">
+            <div className="text-2xl font-bold italic tracking-tighter uppercase">Kamp modul</div>
+            <div className="text-xs text-slate-400 mt-1">Opret kampe, hold og spillere før rapport start.</div>
+          </div>
         </div>
         
         <AdminManagement />

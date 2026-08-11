@@ -69,8 +69,8 @@ export function AdminArchive() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
-      <div className="max-w-3xl mx-auto pb-16">
-        <header className="mb-8 relative">
+      <div className="max-w-7xl mx-auto pb-16">
+        <header className="mb-8 relative max-w-3xl mx-auto">
           <Link to="/admin" className="absolute left-0 top-1.5 text-slate-400 hover:text-emerald-500 transition-colors">
             <ArrowLeft className="w-6 h-6" />
           </Link>
@@ -85,11 +85,11 @@ export function AdminArchive() {
           {loading ? (
             <div className="text-center text-slate-400 p-8 font-bold">Henter kampe...</div>
           ) : matches.length === 0 ? (
-            <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200">
+            <div className="text-center text-slate-400 p-8 font-bold bg-white rounded-2xl border-2 border-dashed border-slate-200 max-w-3xl mx-auto">
               Ingen afsluttede kampe endnu
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                {matches.map(match => (
                 <Link 
                   key={match.id} 

@@ -132,47 +132,67 @@ export function SpectatorMatch() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto w-full max-w-sm mx-auto bg-slate-50 md:shadow-2xl md:my-4 md:rounded-[40px] md:border-[12px] md:border-slate-800 flex flex-col relative overflow-hidden">
+      <div className="flex-1 overflow-y-auto w-full bg-slate-50 flex flex-col relative">
         <MatchHeader match={match} />
         
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
-          <MatchStats match={match} events={events} />
-
-          {match.adminComments && match.adminComments.length > 0 && (
-            <div className="mt-6 space-y-3">
-              <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest text-center">Kampnoter</h3>
-              <div className="space-y-2">
-                {[...match.adminComments].sort((a, b) => b.createdAt - a.createdAt).map(comment => {
-                  const phaseLabels = { before: 'Før kampen', during: 'Under kampen', after: 'Efter kampen' };
-                  const phaseColors = { 
-                    before: 'bg-sky-50 text-sky-700 border-sky-100', 
-                    during: 'bg-emerald-50 text-emerald-700 border-emerald-100', 
-                    after: 'bg-slate-100 text-slate-700 border-slate-200' 
-                  };
-
-                  return (
-                    <div key={comment.id} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-1.5">
-                      <div className="flex items-center">
-                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${phaseColors[comment.phase]}`}>
-                          {phaseLabels[comment.phase]}
-                        </span>
-                      </div>
-                      <p className="text-xs font-semibold text-slate-700 whitespace-pre-line leading-relaxed">
-                        {comment.text}
-                      </p>
-                    </div>
-                  );
-                })}
+        <div className="max-w-7xl mx-auto w-full p-4 lg:p-6">
+          <div className="grid lg:grid-cols-12 lg:gap-8 items-start">
+            
+            {/* Left/Main Column: Timeline */}
+            <div className="lg:col-span-8 space-y-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Kampforløb
+                </h3>
+                <MatchTimeline match={match} events={events} players={players} />
               </div>
             </div>
-          )}
 
-          <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mt-8 mb-4 text-center">Hændelser</h3>
-          <MatchTimeline match={match} events={events} players={players} />
-        </div>
-        
-        <div className="p-4 border-t border-slate-200 bg-white text-center flex-shrink-0">
-           <button className="text-emerald-600 text-sm font-bold uppercase tracking-tight">Vis fuld kamprapport</button>
+            {/* Right Column: Stats & Notes */}
+            <div className="lg:col-span-4 space-y-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <MatchStats match={match} events={events} />
+              </div>
+
+              {match.adminComments && match.adminComments.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                  <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                    Kampnoter
+                  </h3>
+                  <div className="space-y-3">
+                    {[...match.adminComments].sort((a, b) => b.createdAt - a.createdAt).map(comment => {
+                      const phaseLabels = { before: 'Før kampen', during: 'Under kampen', after: 'Efter kampen' };
+                      const phaseColors = { 
+                        before: 'bg-sky-50 text-sky-700 border-sky-100', 
+                        during: 'bg-emerald-50 text-emerald-700 border-emerald-100', 
+                        after: 'bg-slate-100 text-slate-700 border-slate-200' 
+                      };
+
+                      return (
+                        <div key={comment.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                          <div className="flex items-center mb-2">
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${phaseColors[comment.phase]}`}>
+                              {phaseLabels[comment.phase]}
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-700 whitespace-pre-line leading-relaxed italic">
+                            "{comment.text}"
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
+                 <button className="text-emerald-600 text-sm font-bold uppercase tracking-tight hover:text-emerald-700 transition-colors">Vis fuld kamprapport →</button>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
     </div>
