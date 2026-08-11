@@ -69,7 +69,18 @@ export function AdminManagement() {
   };
 
   useEffect(() => {
+    let unsubTeams: (() => void) | null = null;
+    let unsubTourneys: (() => void) | null = null;
+    let unsubPlayers: (() => void) | null = null;
+    let unsubMatches: (() => void) | null = null;
+
     const unsubAuth = onAuthStateChanged(auth, (user) => {
+      // Cleanup previous listeners if any
+      unsubTeams?.();
+      unsubTourneys?.();
+      unsubPlayers?.();
+      unsubMatches?.();
+
       if (!user) {
         setTeams([]);
         setTournaments([]);
@@ -80,11 +91,11 @@ export function AdminManagement() {
 
       const uid = user.uid;
       
-      const unsubTeams = onSnapshot(query(collection(db, 'teams'), where('ownerId', '==', uid)), snapshot => {
+      unsubTeams = onSnapshot(query(collection(db, 'teams'), where('ownerId', '==', uid)), snapshot => {
         setTeams(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Team)));
       }, err => handleFirestoreError(err, OperationType.LIST, 'teams'));
 
-      const unsubTourneys = onSnapshot(query(collection(db, 'tournaments'), where('ownerId', '==', uid)), snapshot => {
+      unsubTourneys = onSnapshot(query(collection(db, 'tournaments'), where('ownerId', '==', uid)), snapshot => {
         setTournaments(snapshot.docs.map(d => ({ 
           id: d.id, 
           name: d.data().name, 
@@ -94,25 +105,24 @@ export function AdminManagement() {
         })));
       }, err => handleFirestoreError(err, OperationType.LIST, 'tournaments'));
 
-      const unsubPlayers = onSnapshot(query(collection(db, 'players'), where('ownerId', '==', uid)), snapshot => {
+      unsubPlayers = onSnapshot(query(collection(db, 'players'), where('ownerId', '==', uid)), snapshot => {
         setPlayers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Player)));
       }, err => handleFirestoreError(err, OperationType.LIST, 'players'));
 
-      const unsubMatches = onSnapshot(query(collection(db, 'matches'), where('ownerId', '==', uid)), snapshot => {
+      unsubMatches = onSnapshot(query(collection(db, 'matches'), where('ownerId', '==', uid)), snapshot => {
         const allMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
         allMatches.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
         setMatches(allMatches);
       }, err => handleFirestoreError(err, OperationType.LIST, 'matches'));
-
-      return () => {
-        unsubTeams();
-        unsubTourneys();
-        unsubPlayers();
-        unsubMatches();
-      };
     });
 
-    return unsubAuth;
+    return () => {
+      unsubAuth();
+      unsubTeams?.();
+      unsubTourneys?.();
+      unsubPlayers?.();
+      unsubMatches?.();
+    };
   }, []);
 
   const handleDelete = (collectionName: string, id: string) => {
@@ -213,8 +223,7 @@ export function AdminManagement() {
 
   const createMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMatchHome || !newMatchAway || !newMatchTourName || !auth.currentUser) return;
-    try {
+    if (!newMatchHome || !newMatchAway || !newMatchTourName || !auth.currentUser) return;    try {
       let homeTeam = teams.find(t => t.name === newMatchHome);
       if (!homeTeam) {
         homeTeam = {
@@ -237,7 +246,7 @@ export function AdminManagement() {
         };
       }
 
-      await addDoc(collection(db, 'matches'), {
+      const matchData = {
         tournamentName: newMatchTourName,
         groupName: '',
         homeTeam: homeTeam,
@@ -250,8 +259,13 @@ export function AdminManagement() {
         elapsedSeconds: 0,
         maxSquadSize: 17,
         ownerId: auth.currentUser.uid,
-        isHidden: newMatchIsHidden
-      });
+        isHidden: newMatchIsHidden,
+        statusUpdatedAt: Date.now()
+      };
+
+      console.log('Creating match with data:', matchData);
+      await addDoc(collection(db, 'matches'), matchData);
+
       setNewMatchHome('');
       setNewMatchAway('');
       setNewMatchStartTime('');
@@ -389,8 +403,15 @@ export function AdminManagement() {
                           {t.isHidden && <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-widest">Skjult</span>}
                         </span>
                         {(t.startDate || t.endDate) && (
-                          <span className="text-xs text-slate-400">
-                            {t.startDate ? new Date(t.startDate).toLocaleDateString('da-DK') : 'Ukendt'} - {t.endDate ? new Date(t.endDate).toLocaleDateString('da-DK') : 'Ukendt'}
+                          <span className="text-xs text-emerald-600 font-bold uppercase tracking-tighter">
+                            {(() => {
+                              const formatDate = (dateStr?: string) => {
+                                if (!dateStr) return '';
+                                const date = new Date(dateStr);
+                                return date.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' }).replace('.', '');
+                              };
+                              return `${t.startDate ? formatDate(t.startDate) : '?'}${t.endDate && t.endDate !== t.startDate ? ` - ${formatDate(t.endDate)}` : ''}`;
+                            })()}
                           </span>
                         )}
                       </div>
@@ -613,7 +634,15 @@ export function AdminManagement() {
                  onChange={e => setNewMatchTourName(e.target.value)}
                >
                  <option value="">Vælg Turnering...</option>
-                 {tournaments.filter(t => !t.isHidden).map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                 {tournaments.filter(t => !t.isHidden).map(t => {
+                   const formatDate = (dateStr?: string) => {
+                     if (!dateStr) return '';
+                     const date = new Date(dateStr);
+                     return date.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' }).replace('.', '');
+                   };
+                   const dateRange = t.startDate ? ` (${formatDate(t.startDate)}${t.endDate && t.endDate !== t.startDate ? ` - ${formatDate(t.endDate)}` : ''})` : '';
+                   return <option key={t.id} value={t.name}>{t.name}{dateRange}</option>
+                 })}
                </select>
                
                <div className="grid gap-2">
