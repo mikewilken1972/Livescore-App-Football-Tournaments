@@ -118,33 +118,42 @@ export function AdminMatch() {
   }, [match?.status, match?.statusUpdatedAt, match?.elapsedSeconds, match?.isPaused]);
 
   useEffect(() => {
-    if (!id || !auth.currentUser) return;
-    
-    // Check if the user is signed in... if not redirect... handled by app ideally, but here we can just wait for context or let it fail
-    
-    const unsubMatch = onSnapshot(doc(db, 'matches', id), doc => {
-      if (doc.exists()) {
-        const m = { id: doc.id, ...doc.data() } as Match;
-        setMatch(m);
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setMatch(null);
+        setPlayers([]);
+        setEvents([]);
+        return;
       }
-      setLoading(false);
-    }, err => handleFirestoreError(err, OperationType.GET, `matches/${id}`));
+      
+      if (id) {
+        const unsubMatch = onSnapshot(doc(db, 'matches', id), doc => {
+          if (doc.exists()) {
+            const m = { id: doc.id, ...doc.data() } as Match;
+            setMatch(m);
+          }
+          setLoading(false);
+        }, err => handleFirestoreError(err, OperationType.GET, `matches/${id}`));
 
-    const unsubPlayers = onSnapshot(collection(db, 'players'), snapshot => {
-      setPlayers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Player)));
-    }, err => handleFirestoreError(err, OperationType.LIST, `players`));
+        const unsubPlayers = onSnapshot(collection(db, 'players'), snapshot => {
+          setPlayers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Player)));
+        }, err => handleFirestoreError(err, OperationType.LIST, `players`));
 
-    const eventsRef = collection(db, 'matches', id, 'events');
-    const q = query(eventsRef, orderBy('timestamp', 'desc'));
-    const unsubEvents = onSnapshot(q, snapshot => {
-      setEvents(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MatchEvent)));
-    }, err => handleFirestoreError(err, OperationType.LIST, `matches/${id}/events`));
+        const eventsRef = collection(db, 'matches', id, 'events');
+        const q = query(eventsRef, orderBy('timestamp', 'desc'));
+        const unsubEvents = onSnapshot(q, snapshot => {
+          setEvents(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MatchEvent)));
+        }, err => handleFirestoreError(err, OperationType.LIST, `matches/${id}/events`));
 
-    return () => {
-      unsubMatch();
-      unsubPlayers();
-      unsubEvents();
-    };
+        return () => {
+          unsubMatch();
+          unsubPlayers();
+          unsubEvents();
+        };
+      }
+    });
+
+    return unsubAuth;
   }, [id]);
 
   const handleUpdateStatus = async (status: Match['status']) => {

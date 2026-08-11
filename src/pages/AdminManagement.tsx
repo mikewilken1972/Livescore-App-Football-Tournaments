@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, addDoc, onSnapshot, query, where, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth, handleFirestoreError, OperationType, useAdminAccess } from '../firebase';
 import { Match, Player, Team } from '../types';
 import { Pencil, Trash2, X, Check, Shield, EyeOff, Eye } from 'lucide-react';
@@ -68,39 +69,50 @@ export function AdminManagement() {
   };
 
   useEffect(() => {
-    if (!auth.currentUser) return;
-    const uid = auth.currentUser.uid;
-    
-    const unsubTeams = onSnapshot(query(collection(db, 'teams'), where('ownerId', '==', uid)), snapshot => {
-      setTeams(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Team)));
-    }, err => handleFirestoreError(err, OperationType.LIST, 'teams'));
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setTeams([]);
+        setTournaments([]);
+        setPlayers([]);
+        setMatches([]);
+        return;
+      }
 
-    const unsubTourneys = onSnapshot(query(collection(db, 'tournaments'), where('ownerId', '==', uid)), snapshot => {
-      setTournaments(snapshot.docs.map(d => ({ 
-        id: d.id, 
-        name: d.data().name, 
-        isHidden: d.data().isHidden || false,
-        startDate: d.data().startDate,
-        endDate: d.data().endDate
-      })));
-    }, err => handleFirestoreError(err, OperationType.LIST, 'tournaments'));
+      const uid = user.uid;
+      
+      const unsubTeams = onSnapshot(query(collection(db, 'teams'), where('ownerId', '==', uid)), snapshot => {
+        setTeams(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Team)));
+      }, err => handleFirestoreError(err, OperationType.LIST, 'teams'));
 
-    const unsubPlayers = onSnapshot(query(collection(db, 'players'), where('ownerId', '==', uid)), snapshot => {
-      setPlayers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Player)));
-    }, err => handleFirestoreError(err, OperationType.LIST, 'players'));
+      const unsubTourneys = onSnapshot(query(collection(db, 'tournaments'), where('ownerId', '==', uid)), snapshot => {
+        setTournaments(snapshot.docs.map(d => ({ 
+          id: d.id, 
+          name: d.data().name, 
+          isHidden: d.data().isHidden || false,
+          startDate: d.data().startDate,
+          endDate: d.data().endDate
+        })));
+      }, err => handleFirestoreError(err, OperationType.LIST, 'tournaments'));
 
-    const unsubMatches = onSnapshot(query(collection(db, 'matches'), where('ownerId', '==', uid)), snapshot => {
-      const allMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
-      allMatches.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
-      setMatches(allMatches);
-    }, err => handleFirestoreError(err, OperationType.LIST, 'matches'));
+      const unsubPlayers = onSnapshot(query(collection(db, 'players'), where('ownerId', '==', uid)), snapshot => {
+        setPlayers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Player)));
+      }, err => handleFirestoreError(err, OperationType.LIST, 'players'));
 
-    return () => {
-      unsubTeams();
-      unsubTourneys();
-      unsubPlayers();
-      unsubMatches();
-    };
+      const unsubMatches = onSnapshot(query(collection(db, 'matches'), where('ownerId', '==', uid)), snapshot => {
+        const allMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+        allMatches.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
+        setMatches(allMatches);
+      }, err => handleFirestoreError(err, OperationType.LIST, 'matches'));
+
+      return () => {
+        unsubTeams();
+        unsubTourneys();
+        unsubPlayers();
+        unsubMatches();
+      };
+    });
+
+    return unsubAuth;
   }, []);
 
   const handleDelete = (collectionName: string, id: string) => {

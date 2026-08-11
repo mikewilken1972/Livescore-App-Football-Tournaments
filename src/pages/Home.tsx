@@ -50,7 +50,7 @@ function MatchCard({ match, ...props }: { match: Match; key?: React.Key }) {
 
 export function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
-  const [tournamentsData, setTournamentsData] = useState<{name: string, isHidden: boolean}[]>([]);
+  const [tournamentsData, setTournamentsData] = useState<{id: string; name: string, isHidden: boolean, startDate?: string, endDate?: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<string | null>(null);
@@ -69,7 +69,13 @@ export function Home() {
   useEffect(() => {
     const q = query(collection(db, 'tournaments'));
     const unsub = onSnapshot(q, snapshot => {
-      setTournamentsData(snapshot.docs.map(d => ({ name: d.data().name, isHidden: d.data().isHidden || false })));
+      setTournamentsData(snapshot.docs.map(d => ({ 
+        id: d.id,
+        name: d.data().name, 
+        isHidden: d.data().isHidden || false,
+        startDate: d.data().startDate,
+        endDate: d.data().endDate
+      })));
       setLoading(false);
     }, err => handleFirestoreError(err, OperationType.LIST, 'tournaments'));
     return unsub;
@@ -148,21 +154,38 @@ export function Home() {
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {tournaments.map(tournamentName => (
-                    <button
-                      key={tournamentName}
-                      onClick={() => setSelectedTournament(tournamentName)}
-                      className="text-left bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group flex justify-between items-center"
-                    >
-                      <div>
-                        <div className="text-xs uppercase tracking-widest text-emerald-600 font-bold mb-1">Turnering</div>
-                        <div className="text-lg font-black text-slate-800">{tournamentName}</div>
+                  {tournaments.map(tournamentName => {
+                    const t = tournamentsData.find(td => td.name === tournamentName);
+                    const formatDate = (dateStr?: string) => {
+                      if (!dateStr) return null;
+                      const date = new Date(dateStr);
+                      return date.toLocaleDateString('da-DK', { day: 'numeric', month: 'long' }).replace('.', '');
+                    };
+
+                    const dateRange = t && (t.startDate || t.endDate) ? (
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
+                        {t.startDate ? formatDate(t.startDate) : '?'}
+                        {t.endDate && t.endDate !== t.startDate ? ` - ${formatDate(t.endDate)}` : ''}
                       </div>
-                      <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
-                        <Trophy className="w-5 h-5 text-slate-400 group-hover:text-emerald-500" />
-                      </div>
-                    </button>
-                  ))}
+                    ) : null;
+
+                    return (
+                      <button
+                        key={tournamentName}
+                        onClick={() => setSelectedTournament(tournamentName)}
+                        className="text-left bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group flex justify-between items-center"
+                      >
+                        <div>
+                          <div className="text-xs uppercase tracking-widest text-emerald-600 font-bold mb-1">Turnering</div>
+                          <div className="text-lg font-black text-slate-800">{tournamentName}</div>
+                          {dateRange}
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
+                          <Trophy className="w-5 h-5 text-slate-400 group-hover:text-emerald-500" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </section>
