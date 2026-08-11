@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg_grad" x1="256" y1="0" x2="256" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E2E8F0"/>
+      <stop offset="0.4" stop-color="#CBD5E1"/>
+      <stop offset="0.41" stop-color="#64748B"/>
+      <stop offset="1" stop-color="#475569"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Rounded Square Background -->
+  <rect width="512" height="512" rx="100" fill="url(#bg_grad)"/>
+  
+  <!-- Outer Glow Box (Subtle) -->
+  <rect x="80" y="80" width="352" height="352" rx="60" stroke="white" stroke-opacity="0.2" stroke-width="2"/>
+
+  <!-- Stopwatch Icon Group -->
+  <g transform="translate(256, 230)" filter="url(#glow)">
+    <!-- Signal Waves -->
+    <path d="M-30,-80 C-10,-95 10,-95 30,-80" stroke="white" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.8"/>
+    <path d="M-15,-65 C-5,-72 5,-72 15,-65" stroke="white" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.6"/>
+    
+    <!-- Stopwatch Main Body -->
+    <circle r="60" stroke="white" stroke-width="12" fill="none" />
+    <!-- T-top button -->
+    <path d="M-15,-70 L15,-70 M0,-70 L0,-60" stroke="white" stroke-width="12" stroke-linecap="round" fill="none" />
+    <!-- Center hand -->
+    <line x1="0" y1="0" x2="0" y2="-30" stroke="white" stroke-width="8" stroke-linecap="round" />
+    <!-- Side button -->
+    <path d="M45,-45 L55,-55" stroke="white" stroke-width="8" stroke-linecap="round" />
+  </g>
+
+  <!-- Text "LIVESCORE" -->
+  <text x="256" y="420" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-weight="bold" font-size="44" letter-spacing="2">LIVESCORE</text>
+</svg>
